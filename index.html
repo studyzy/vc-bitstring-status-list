@@ -1,7 +1,7 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh">
   <head>
-    <title>Bitstring Status List v1.0</title>
+    <title>位串(Bitstring)状态列表v1.0</title>
     <meta http-equiv='Content-Type' content='text/html;charset=utf-8'/>
     <!--
       === NOTA BENE ===
@@ -44,7 +44,13 @@
             href: "https://eprint.iacr.org/2022/1362.pdf",
             date: "January 5th, 2024",
             publisher: "Cryptology ePrint Archive"
-          }
+          },
+            "VC":{
+                title:    "The Verifiable Credentials Working Group",
+                href:"https://studyzy.github.io/vc-data-model/",
+                status:   "WD",
+                publisher:  "W3C Verifiable Credentials Working Group"
+            }
         },
         doJsonLd: true,
 
@@ -80,7 +86,9 @@
           company: 'Mavennet',
           companyURL: 'https://www.mavennet.com/',
           w3cid: 121911
-        }],
+        },{
+            name: "曾毅（中文翻译）", url: "https://github.com/studyzy/",
+            company: "深蓝居", companyURL: "https://www.cnblogs.com/studyzy", w3cid: 99999999 }],
         // authors, add as many as you like.
         // This is optional, uncomment if you have authors as well as editors.
         // only "name" is required. Same format as editors.
@@ -211,677 +219,383 @@ table.simple tbody tr:last-of-type {
     </style>
   </head>
   <body>
-    <section id='abstract'>
-      <p>
-This specification describes a privacy-preserving, space-efficient, and
-high-performance mechanism for publishing status information such as
-suspension or revocation of Verifiable Credentials through use of bitstrings.
-      </p>
-    </section>
+ <section id='abstract'>
+       <p>
+ 本规范描述了一种使用位串发布状态信息（如可验证凭证的暂停或撤销）的隐私保护、空间高效且高性能的机制。
+       </p>
+     </section>
 
-    <section id='sotd'>
-    </section>
+     <section id='sotd'>
+     </section>
 
-    <section class="informative">
-      <h2>Introduction</h2>
-      <p>
-It is often useful for an [=issuer=] of [=verifiable credentials=]
-[[VC-DATA-MODEL-2.0]] to link to a location where a [=verifier=] can check to see
-if a credential has been suspended or revoked. There are a variety of privacy
-and performance considerations that are made when designing, publishing, and
-processing status lists.
-      </p>
-      <p>
-One such privacy consideration happens when there is a one-to-one mapping
-between a [=verifiable credential=] and a URL where the status is
-published. This type of mapping enables the website that publishes the URL to
-correlate the [=holder=], time, and [=verifier=] when the status is
-checked. This could enable the [=issuer=] to discover the type of interaction
-the [=holder=] is having with the [=verifier=], such as providing an age
-verification credential when entering a bar. Being tracked by the [=issuer=]
-of a driver's license when entering an establishment violates a privacy
-expectation that many people have today.
-      </p>
-      <p>
-Similarly, there are performance considerations that are explored when designing
-status lists. One such consideration is where the list is published and the
-burden it places from a bandwidth and processing perspective, both on the server
-and the client fetching the information. In order to meet privacy expectations,
-it is useful to bundle the status of large sets of credentials into a single
-list to help with group privacy. However, doing so can place an impossible
-burden on both the server and client if the status information is as much as a
-few hundred bytes in size per credential across a population of
-hundreds of millions of [=holders=].
-      </p>
-      <p>
-The rest of this document proposes a highly compressible, bitstring-based
-status list mechanism with strong privacy-preserving characteristics,
-that is compatible with the architecture of the Web, is highly space-efficient,
-and lends itself well to content distribution networks. As an example of
-using this specification to achieve a number of beneficial privacy and
-performance goals, it is possible to create a status list that can be
-constructed for 100,000 [=verifiable credentials=] that is roughly
-12,500 bytes in size in the worst case. In a case where a few hundred
-credentials have been revoked, the size of the list is less than a
-few hundred bytes while providing privacy in a group of 100,000 individuals.
-      </p>
+     <section class="informative">
+       <h2>介绍</h2>
+       <p>
+ 对于<a data-cite="VC#dfn-vc">可验证凭证</a>的<a data-cite="VC#dfn-issuers">发行者</a> [[VC-DATA-MODEL-2.0]]，链接到一个<a data-cite="VC#dfn-verifier">验证者</a>可以检查凭证是否已被暂停或撤销的位置通常是有用的。在设计、发布和处理状态列表时，需要考虑各种隐私和性能问题。
+       </p>
+       <p>
+ 一种隐私问题发生在<a data-cite="VC#dfn-vc">可验证凭证</a>与发布状态的URL之间存在一对一映射时。这种映射使得发布URL的网站能够关联<a data-cite="VC#dfn-holders">持有者</a>、时间和<a data-cite="VC#dfn-verifier">验证者</a>的状态检查。这可能使<a data-cite="VC#dfn-issuers">发行者</a>发现<a data-cite="VC#dfn-holders">持有者</a>与<a data-cite="VC#dfn-verifier">验证者</a>的交互类型，例如在进入酒吧时提供年龄验证凭证。当进入场所时被驾驶执照的<a data-cite="VC#dfn-issuers">发行者</a>跟踪，违反了许多人今天的隐私期望。
+       </p>
+       <p>
+ 类似地，在设计状态列表时也需要考虑性能问题。其中一个考虑是列表的发布位置以及它对服务器和获取信息的客户端在带宽和处理方面的负担。为了满足隐私期望，将大量凭证的状态捆绑到一个列表中以帮助实现群体隐私是有用的。然而，如果每个凭证的状态信息大小达到几百字节，并且覆盖数亿<a data-cite="VC#dfn-holders">持有者</a>的人群，这可能会对服务器和客户端造成无法承受的负担。
+       </p>
+       <p>
+ 本文档的其余部分提出了一种具有强隐私保护特性的高压缩位串状态列表机制，该机制与Web架构兼容，具有高度的空间效率，并且非常适合内容分发网络。作为使用本规范实现多种隐私和性能目标的一个示例，可以为100,000个<a data-cite="VC#dfn-vc">可验证凭证</a>创建一个状态列表，其最坏情况下的大小约为12,500字节。在少数几百个凭证被撤销的情况下，列表的大小小于几百字节，同时在100,000人的群体中提供隐私。
+       </p>
 
-      <section class="informative">
-        <h3>Conceptual Framework</h3>
+       <section class="informative">
+         <h3>概念框架</h3>
 
-        <p>
-This section outlines the core concept utilized by the status list
-mechanism described in this specification. At the most basic level, status
-information for all [=verifiable credentials=] issued by an [=issuer=]
-is expressed as items in a list. Each [=issuer=] manages a list
-of all [=verifiable credentials=] that it has issued. Each
-[=verifiable credential=] is associated with an item in its list.
-When a single bit specifies a status, such as "revoked" or "suspended",
-then that status is expected to be true when the bit is set (`1`) and
-false when unset (`0`).
-        </p>
+         <p>
+ 本节概述了本规范描述的状态列表机制所使用的核心概念。在最基本的层面上，所有由<a data-cite="VC#dfn-issuers">发行者</a>发布的<a data-cite="VC#dfn-vc">可验证凭证</a>的状态信息以列表项的形式表示。每个<a data-cite="VC#dfn-issuers">发行者</a>管理其发布的所有<a data-cite="VC#dfn-vc">可验证凭证</a>的列表。每个<a data-cite="VC#dfn-vc">可验证凭证</a>与其列表中的一个项相关联。当单个位指定状态（例如“已撤销”或“已暂停”）时，该状态在位被设置为`1`时为真，在未设置为`0`时为假。
+         </p>
 
-        <p>
-One of the benefits of using a bitstring is that it is a highly compressible
-data format since, in the average case, large numbers of credentials will
-remain unrevoked. This will ensure long sections of bits that are the same
-value and thus highly compressible using run-length compression techniques
-such as GZIP [[RFC1952]]. The default status list size is 131,072 entries,
-equivalent to 16&nbsp;KB of single bit values. When only a handful of
-[=verifiable credentials=] are revoked, GZIP compresses the bitstring
-to a few hundred bytes.
-        </p>
+         <p>
+ 使用位串的一个好处是它是一种高度可压缩的数据格式，因为在平均情况下，大量凭证将保持未撤销状态。这将确保长段的位值相同，从而可以使用诸如GZIP [[RFC1952]]之类的运行长度压缩技术进行高度压缩。默认状态列表大小为131,072个条目，相当于16&nbsp;KB的单个位值。当只有少数<a data-cite="VC#dfn-vc">可验证凭证</a>被撤销时，GZIP将位串压缩到几百字节。
+         </p>
 
-        <p>
-Another benefit of using a bitstring is that it enables large numbers of
-[=verifiable credential=] statuses to be placed in the same list.
-This specification uses a minimum list length of 131,072. This
-size ensures an adequate amount of group privacy in the average case.
-If better group privacy is required, the bitstring can be made larger.
-        </p>
+         <p>
+ 使用位串的另一个好处是它允许大量<a data-cite="VC#dfn-vc">可验证凭证</a>状态放置在同一个列表中。本规范使用最小列表长度为131,072。这种大小在平均情况下确保了足够的群体隐私。如果需要更好的群体隐私，可以将位串设置得更大。
+         </p>
 
-        <figure id="bitstring">
-          <img style="margin: auto; display: block; width: 75%;"
-            src="diagrams/BitstringStatusListConcept.svg" alt="
-          diagram showing a list of boxes at the top of the image with two of
-          them in red depicting revoked credentials. Text beside the boxes to
-          the right reads 16 kilobytes. An depiction of the boxes being GZIP
-          compressed into a cylinder on the bottom of the page shows that
-          compression has resulted in a final size of 135 bytes.">
-          <figcaption style="text-align: center;">
-            A visual depiction of the concepts outlined in this section.
-          </figcaption>
-        </figure>
+         <figure id="bitstring">
+           <img style="margin: auto; display: block; width: 75%;"
+             src="diagrams/BitstringStatusListConcept.svg" alt="
+           图示显示了图像顶部的一组框，其中两个框为红色，表示已撤销的凭证。框右侧的文字显示为16千字节。图像底部显示这些框被GZIP压缩成一个圆柱体，压缩后的最终大小为135字节。">
+           <figcaption style="text-align: center;">
+             本节概述的概念的视觉描述。
+           </figcaption>
+         </figure>
 
-        <p class="note"
-           title="Status information is about the verifiable credential">
-The status information associated with a particular [=verifiable credential=]
-is about the [=verifiable credential=] itself and might not apply to any
-underlying or backing [=credential=], such as an educational degree. For
-example, in the case of such an educational degree, it is possible for a
-[=verifiable credential=] to be revoked because the mechanism used to
-create its digital signature has been compromised, while the backing educational
-degree remains valid.
-        </p>
+         <p class="note"
+            title="状态信息与可验证凭证相关">
+ 与特定<a data-cite="VC#dfn-vc">可验证凭证</a>相关的状态信息是关于<a data-cite="VC#dfn-vc">可验证凭证</a>本身的，可能不适用于任何基础或支持的<a data-cite="VC#dfn-credential">凭证</a>，例如教育学位。例如，在这种教育学位的情况下，可能会因为用于创建其数字签名的机制被破坏而撤销<a data-cite="VC#dfn-vc">可验证凭证</a>，而支持的教育学位仍然有效。
+         </p>
 
-      </section>
+       </section>
 
-      <section class="informative">
-        <h3>Terminology</h3>
+       <section class="informative">
+         <h3>术语</h3>
 
-        <p>
-Terminology used throughout this document is defined in the
-<a data-cite="VC-DATA-MODEL-2.0#terminology">Terminology</a> section of the
-[[[VC-DATA-MODEL-2.0]]] specification.
-        </p>
-      </section>
+         <p>
+ 本文档中使用的术语在[[[VC-DATA-MODEL-2.0]]]规范的
+ <a data-cite="VC-DATA-MODEL-2.0#terminology">术语</a>部分中定义。
+         </p>
+       </section>
 
-      <section id="conformance" class="normative">
+       <section id="conformance" class="normative">
 
-        <p>
-A <dfn>conforming document</dfn> is any concrete expression of the
-data model that follows the relevant normative requirements in Section
-<a href="#data-model"></a>.
-        </p>
+         <p>
+ <dfn>符合文档</dfn>是任何遵循第<a href="#data-model"></a>节中相关规范性要求的数据模型的具体表达。
+         </p>
 
-        <p>
-A <dfn>conforming processor</dfn> is any algorithm realized
-as software and/or hardware that generates and/or consumes a
-[=conforming document=] according to the relevant normative statements in
-Section <a href="#algorithms"></a>. Conforming processors MAY choose to only
-support bitstring entry sizes of 1. Conforming processors MUST produce errors
-when non-conforming documents are consumed.
-        </p>
+         <p>
+ <dfn>符合处理器</dfn>是任何以软件和/或硬件实现的算法，根据第<a href="#algorithms"></a>节中的相关规范性声明生成和/或消费[=符合文档=]。符合处理器可以选择仅支持位串条目大小为1。符合处理器在消费不符合的文档时必须产生错误。
+         </p>
 
-      </section>
+       </section>
 
-    </section>
-
+     </section>
     <section class="normative">
-      <h2>Data Model</h2>
+     <h2 id="data-model">数据模型</h2>
 
-      <p>
-There are numerous ways to express status information associated with digital
-credentials. Some of these mechanisms include Certificate Revocation Lists (CRL)
-[[?RFC5280]], the Online Certificate Status Protocol (OCSP) [[?RFC2560]], Bloom
-Filters [[?RFC8932]], and cryptographic accumulators [[?ALLOSAUR]]. This
-specification optimizes for a variety of requirements that are different from
-other mechanisms. These requirements include:
-      </p>
+     <p>
+     有多种方式可以表达与数字凭证相关的状态信息。这些机制包括证书吊销列表（CRL）[[?RFC5280]]、在线证书状态协议（OCSP）[[?RFC2560]]、布隆过滤器[[?RFC8932]]和加密累加器[[?ALLOSAUR]]。本规范针对不同于其他机制的各种需求进行了优化。这些需求包括：
+     </p>
 
-      <table class="simple" id="#pfatable">
-        <thead>
-        <tr>
-            <th style="text-align: center;">Technology</th>
-            <th style="text-align: center;">CRL</th>
-            <th style="text-align: center;">OCSP</th>
-            <th style="text-align: center;">Bloom</th>
-            <th style="text-align: center;">Accumulator</th>
-            <th style="text-align: center;">Bitstring</th>
-        </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>
-Provides tunable group privacy
-            </td>
-            <td class="supported">✓</td>
-            <td class="missing">✗</td>
-            <td class="supported">✓</td>
-            <td class="supported">✓</td>
-            <td class="supported">✓</td>
-          </tr>
-          <tr>
-            <td>
-Does not require signed assertion for each credential
-            </td>
-            <td class="supported">✓</td>
-            <td class="missing">✗</td>
-            <td class="supported">✓</td>
-            <td class="supported">✓</td>
-            <td class="supported">✓</td>
-          </tr>
-          <tr>
-            <td>
-Resistant to [=issuer=] tracking when fetched by [=verifier=]
-            </td>
-            <td class="supported">✓</td>
-            <td class="supported">✓</td>
-            <td class="supported">✓</td>
-            <td class="supported">✓</td>
-            <td class="supported">✓</td>
-          </tr>
-          <tr>
-            <td>
-Caching is space efficient with many revocations
-            </td>
-            <td class="missing">✗</td>
-            <td class="missing">✗</td>
-            <td class="supported">✓</td>
-            <td class="supported">✓</td>
-            <td class="supported">✓</td>
-          </tr>
-          <tr>
-            <td>
-Highly compressible (>90% average compression)
-            </td>
-            <td class="missing">✗</td>
-            <td class="missing">✗</td>
-            <td class="supported">✓</td>
-            <td class="supported">✓</td>
-            <td class="supported">✓</td>
-          </tr>
-          <tr>
-            <td>
-Updates are efficient (fast and entire population does not need to update)
-            </td>
-            <td class="supported">✓</td>
-            <td class="missing">✗</td>
-            <td class="supported">✓</td>
-            <td class="missing">✗</td>
-            <td class="supported">✓</td>
-          </tr>
-          <tr>
-            <td>
-Uses cryptographic primitives approved by IETF
-            </td>
-            <td class="supported">✓</td>
-            <td class="supported">✓</td>
-            <td class="supported">✓</td>
-            <td class="missing">✗</td>
-            <td class="supported">✓</td>
-          </tr>
-          <tr>
-            <td>
-No false positives
-            </td>
-            <td class="supported">✓</td>
-            <td class="supported">✓</td>
-            <td class="missing">✗</td>
-            <td class="supported">✓</td>
-            <td class="supported">✓</td>
-          </tr>
-          <tr>
-            <td>
-Can be delivered by [=holder=] (stapling)
-            </td>
-            <td class="missing">✗</td>
-            <td class="supported">✓</td>
-            <td class="missing">✗</td>
-            <td class="supported">✓</td>
-            <td class="supported">✓</td>
-          </tr>
-          <tr>
-            <td>
-Easily profiled for usage with [=verifiable credentials=]
-            </td>
-            <td class="missing">✗</td>
-            <td class="missing">✗</td>
-            <td class="missing">✗</td>
-            <td class="missing">✗</td>
-            <td class="supported">✓</td>
-          </tr>
-        </tbody>
-      </table>
+     <table class="simple" id="#pfatable">
+       <thead>
+         <tr>
+           <th style="text-align: center;">技术</th>
+           <th style="text-align: center;">CRL</th>
+           <th style="text-align: center;">OCSP</th>
+           <th style="text-align: center;">布隆过滤器</th>
+           <th style="text-align: center;">累加器</th>
+           <th style="text-align: center;">位串</th>
+         </tr>
+       </thead>
+       <tbody>
+         <tr>
+           <td>提供可调节的群体隐私</td>
+           <td class="supported">✓</td>
+           <td class="missing">✗</td>
+           <td class="supported">✓</td>
+           <td class="supported">✓</td>
+           <td class="supported">✓</td>
+         </tr>
+         <tr>
+           <td>不需要为每个凭证签署断言</td>
+           <td class="supported">✓</td>
+           <td class="missing">✗</td>
+           <td class="supported">✓</td>
+           <td class="supported">✓</td>
+           <td class="supported">✓</td>
+         </tr>
+         <tr>
+           <td>在<a data-cite="VC#dfn-verifier">验证者</a>获取时对<a data-cite="VC#dfn-issuers">发行者</a>的跟踪具有抵抗性</td>
+           <td class="supported">✓</td>
+           <td class="supported">✓</td>
+           <td class="supported">✓</td>
+           <td class="supported">✓</td>
+           <td class="supported">✓</td>
+         </tr>
+         <tr>
+           <td>在存在大量吊销时缓存空间高效</td>
+           <td class="missing">✗</td>
+           <td class="missing">✗</td>
+           <td class="supported">✓</td>
+           <td class="supported">✓</td>
+           <td class="supported">✓</td>
+         </tr>
+         <tr>
+           <td>高度可压缩（平均压缩率超过90%）</td>
+           <td class="missing">✗</td>
+           <td class="missing">✗</td>
+           <td class="supported">✓</td>
+           <td class="supported">✓</td>
+           <td class="supported">✓</td>
+         </tr>
+         <tr>
+           <td>更新高效（快速且无需整个群体更新）</td>
+           <td class="supported">✓</td>
+           <td class="missing">✗</td>
+           <td class="supported">✓</td>
+           <td class="missing">✗</td>
+           <td class="supported">✓</td>
+         </tr>
+         <tr>
+           <td>使用IETF批准的加密原语</td>
+           <td class="supported">✓</td>
+           <td class="supported">✓</td>
+           <td class="supported">✓</td>
+           <td class="missing">✗</td>
+           <td class="supported">✓</td>
+         </tr>
+         <tr>
+           <td>无误报</td>
+           <td class="supported">✓</td>
+           <td class="supported">✓</td>
+           <td class="missing">✗</td>
+           <td class="supported">✓</td>
+           <td class="supported">✓</td>
+         </tr>
+         <tr>
+           <td>可由<a data-cite="VC#dfn-holders">持有者</a>传递（绑定）</td>
+           <td class="missing">✗</td>
+           <td class="supported">✓</td>
+           <td class="missing">✗</td>
+           <td class="supported">✓</td>
+           <td class="supported">✓</td>
+         </tr>
+         <tr>
+           <td>易于为<a data-cite="VC#dfn-vc">可验证凭证</a>使用进行配置</td>
+           <td class="missing">✗</td>
+           <td class="missing">✗</td>
+           <td class="missing">✗</td>
+           <td class="missing">✗</td>
+           <td class="supported">✓</td>
+         </tr>
+       </tbody>
+     </table>
+    <section>
+  <h3 id="bitstringstatuslistentry">位串状态列表条目</h3>
 
+  <p>
+当<a data-cite="VC#dfn-issuers">发行者</a>希望为<a data-cite="VC#dfn-vc">可验证凭证</a>启用状态信息时，他们可以添加一个`credentialStatus`属性，该属性使用本节中描述的数据模型。本节中的数据模型的任何表达形式都必须以[[VC-DATA-MODEL-2.0]]中定义的符合<a data-cite="VC#dfn-vc">可验证凭证</a>的形式表达。
+  </p>
+
+  <table class="simple">
+    <thead>
+      <tr>
+        <th style="white-space: nowrap">属性</th>
+        <th>描述</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>id</td>
+        <td>
+一个可选的状态列表条目的标识符。`id`属性的约束在可验证凭证数据模型规范[[VC-DATA-MODEL-2.0]]中列出。如果存在，该值应为一个URL，用于标识与<a data-cite="VC#dfn-vc">可验证凭证</a>相关的状态信息。它不能是状态列表的URL。该值在验证或校验过程中不使用，也不需要与`statusListCredential`值相关。如果需要，该值可以用于唯一标识`BitstringStatusListEntry`对象，例如在数据库中存储时。
+        </td>
+      </tr>
+      <tr>
+        <td>type</td>
+        <td>
+`type`属性必须为`BitstringStatusListEntry`。
+        </td>
+      </tr>
+      <tr>
+        <td>statusPurpose</td>
+        <td>
+状态条目的用途必须是一个字符串。虽然字符串的值是任意的，但以下值必须用于其预期用途：
+          <table class="simple">
+            <thead>
+              <tr>
+                <th style="white-space: nowrap">值</th>
+                <th>描述</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>`refresh`</td>
+                <td>
+用于表示通过凭证的<a data-cite="VC-DATA-MODEL-2.0#refreshing">刷新服务</a>功能可获得更新的<a data-cite="VC#dfn-vc">可验证凭证</a>。此状态不会使<a data-cite="VC#dfn-vc">可验证凭证</a>失效，并且不可逆。
+                </td>
+              </tr>
+              <tr>
+                <td>`revocation`</td>
+                <td>
+用于取消<a data-cite="VC#dfn-vc">可验证凭证</a>的有效性。此状态不可逆。
+                </td>
+              </tr>
+              <tr>
+                <td>`suspension`</td>
+                <td>
+用于暂时阻止接受<a data-cite="VC#dfn-vc">可验证凭证</a>。此状态是可逆的。
+                </td>
+              </tr>
+              <tr>
+                <td>`message`</td>
+                <td>
+用于传达与<a data-cite="VC#dfn-vc">可验证凭证</a>状态相关的任意消息。
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td>statusListIndex</td>
+        <td>
+`statusListIndex`属性必须是一个大于或等于0的任意大小的整数，以十进制字符串表示。该值标识<a data-cite="VC#dfn-vc">可验证凭证</a>状态的位置。实现应随机分配索引，以避免推断出分配的时间或群体的大小等信息。
+        </td>
+      </tr>
+      <tr>
+        <td>statusListCredential</td>
+        <td>
+`statusListCredential`属性必须是指向<a data-cite="VC#dfn-vc">可验证凭证</a>的URL。当该URL被解析时，结果<a data-cite="VC#dfn-vc">可验证凭证</a>必须具有包含`BitstringStatusListCredential`值的`type`属性。
+        </td>
+      </tr>
+      <tr>
+        <td id="statusSize">statusSize</td>
+        <td>
+`statusSize`表示状态条目的位大小。`statusSize`可以提供。如果`statusSize`未作为`credentialStatus`的属性提供，则`statusSize`必须被处理为`1`。如果提供，`statusSize`必须是大于零的整数。如果`statusSize`的值大于`1`，则`credentialStatus.statusMessage`属性必须存在，并且状态消息的数量必须等于可能值的数量。
+        </td>
+      </tr>
+      <tr>
+        <td id="statusMessage">statusMessage</td>
+        <td>
+如果存在，`statusMessage`属性必须是一个数组，其长度必须等于`statusSize`指示的可能状态消息的数量（例如，如果`statusSize`为1位，则`statusMessage`数组必须有2个元素；如果`statusSize`为2位，则有4个元素；如果`statusSize`为3位，则有8个元素，依此类推）。如果`statusSize`为`1`，`statusMessage`可以存在；如果`statusSize`大于`1`，则`statusMessage`必须存在。如果`statusMessage`数组不存在，则与`1`和`0`状态位值相关联的消息值分别为“set”和“unset”。如果`statusMessage`数组存在，每个元素必须包含以下两个属性，并可以包含其他属性：
+          <ul>
+            <li id="status">
+`status`，一个表示状态的十六进制值的字符串，以`0x`为前缀。
+            </li>
+            <li id="message">
+`message`，一个供软件开发人员调试使用的字符串，不应显示给最终用户。
+            </li>
+          </ul>
+实现者可以向`statusMessage`数组中的对象添加其他值。实现者可以在值中使用字符串值`undefined`，以指示与相关状态值对应的状态未定义，但可能在未来定义。如何处理各种状态消息的规则超出了本规范的规范性要求范围，但假定实现者将记录处理各种状态代码的规则。
+        </td>
+      </tr>
+      <tr>
+        <td id="statusReference">statusReference</td>
+        <td>
+实现者可以包含`statusReference`属性。如果存在，其值必须是一个URL或URL数组[[URL]]，这些URL解析为与状态相关的材料。使用`message`作为`statusPurpose`的实现者强烈建议提供`statusReference`。
+          <p class="note" title="关于引用的详细信息">
+`statusReference`在凭证的状态解释可能涉及对业务案例的理解时尤为重要。
+          </p>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</section>
       <section>
-        <h3>BitstringStatusListEntry</h3>
+        <h3 id="bitstringstatuslistcredential">位串状态列表凭证</h3>
 
         <p>
-When an [=issuer=] desires to enable status information for a
-[=verifiable credential=], they MAY add a `credentialStatus`
-property that uses the data model described in this section. Any
-expression of the data model in this section MUST be expressed in a
-conforming [=verifiable credential=] as defined in [[VC-DATA-MODEL-2.0]].
+      当状态列表<a data-cite="VC#dfn-vc">可验证凭证</a>被发布时，它必须是一个符合[[VC-DATA-MODEL-2.0]]定义的文档，并以本节中描述的数据模型形式表达。以下部分描述了封装状态列表的<a data-cite="VC#dfn-vc">可验证凭证</a>的格式。
+        </p>
+
+        <p>
+      状态列表以<a data-cite="VC#dfn-vc">可验证凭证</a>的形式表达，以便<a data-cite="VC#dfn-holders">持有者</a>可以直接将其提供给<a data-cite="VC#dfn-verifier">验证者</a>。这种机制有时被称为“证书绑定”，通过确保<a data-cite="VC#dfn-verifier">验证者</a>无需联系<a data-cite="VC#dfn-issuers">发行者</a>来检索状态列表，从而提高了<a data-cite="VC#dfn-holders">持有者</a>的隐私性。然而，如果<a data-cite="VC#dfn-verifier">验证者</a>希望获取更近期的状态列表版本，即使其真实性是可验证的，也可能选择忽略由<a data-cite="VC#dfn-holders">持有者</a>提供的状态列表。
+        </p>
+
+        <p>
+      建议<a data-cite="VC#dfn-issuers">发行者</a>和<a data-cite="VC#dfn-verifier">验证者</a>注意，<a data-cite="VC#dfn-vc">可验证凭证</a>的<a data-cite="VC#dfn-issuers">发行者</a>和相关`BitstringStatusListCredential`的<a data-cite="VC#dfn-issuers">发行者</a>可能并不相同。由于技术、法律、机构、政治及其他原因，将原始凭证的管理权与撤销或更改凭证状态的管理权分离可能是合适的。因此，包含`BitstringStatusListEntry`的<a data-cite="VC#dfn-vc">可验证凭证</a>的`issuer`值可以与`BitstringStatusListCredential`的`issuer`值不同。
         </p>
 
         <table class="simple">
           <thead>
             <tr>
-              <th style="white-space: nowrap">Property</th>
-              <th>Description</th>
+              <th style="white-space: nowrap">属性</th>
+              <th>描述</th>
             </tr>
           </thead>
           <tbody>
             <tr>
               <td>id</td>
               <td>
-An optional identifier for the status list entry. The constraints on the `id`
-property are listed in the Verifiable Credentials Data Model specification
-[[VC-DATA-MODEL-2.0]]. If present, the value is expected to be a URL that
-identifies the status information associated with the <a>verifiable
-credential</a>. It MUST NOT be the URL for the status list. The value is not
-used during the verification or validation process, and does not need to be
-related to the `statusListCredential` value. If necessary, the value can be used
-to uniquely identify the `BitstringStatusListEntry` object, such as when it is
-stored in a database.
+      包含状态列表的<a data-cite="VC#dfn-vc">可验证凭证</a>可以表达一个`id`属性，其值应与对应`BitstringStatusListEntry`中`statusListCredential`指定的值匹配（参见<a href="#bitstringstatuslistentry"></a>）。
               </td>
             </tr>
             <tr>
               <td>type</td>
               <td>
-The `type` property MUST be `BitstringStatusListEntry`.
-              </td>
-            </tr>
-            <tr>
-              <td>statusPurpose</td>
-              <td>
-The purpose of the status entry MUST be a string. While the value of the
-string is arbitrary, the following values MUST be used for their intended
-purpose:
-                <table class="simple">
-                  <thead>
-                    <tr>
-                      <th style="white-space: nowrap">Value</th>
-                      <th>Description</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td>`refresh`</td>
-                      <td>
-Used to signal that an updated [=verifiable credential=] is available via the
-credential's <a data-cite="VC-DATA-MODEL-2.0#refreshing">refresh service</a>
-feature. This status does not invalidate the [=verifiable credential=] and is
-not reversible.
-                      </td>
-                    </tr>
-                    <tr>
-                      <td>`revocation`</td>
-                      <td>
-Used to cancel the validity of a [=verifiable credential=]. This status is
-not reversible.
-                      </td>
-                    </tr>
-                    <tr>
-                      <td>`suspension`</td>
-                      <td>
-Used to temporarily prevent the acceptance of a [=verifiable credential=].
-This status is reversible.
-                      </td>
-                    </tr>
-                    <tr>
-                      <td>`message`</td>
-                      <td>
-Used to convey an arbitrary message related to the status of the
-[=verifiable credential=].
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </td>
-            </tr>
-            <tr>
-              <td>statusListIndex</td>
-              <td>
-The `statusListIndex` property MUST be an arbitrary size integer
-greater than or equal to 0, expressed as a string in base 10. The value identifies the
-position of the status of the [=verifiable credential=]. Implementations
-SHOULD assign indexes randomly, such that inferences — such as the recency
-of the assignment or the size of the group — cannot be easily drawn from
-that position.
-              </td>
-            </tr>
-            <tr>
-              <td>statusListCredential</td>
-              <td>
-The `statusListCredential` property MUST be a URL to a
-[=verifiable credential=]. When the URL is dereferenced, the resulting
-[=verifiable credential=] MUST have `type` property that
-includes the `BitstringStatusListCredential` value.
-              </td>
-            </tr>
-            <tr>
-              <td id="statusSize">statusSize</td>
-              <td>
-The `statusSize` indicates the size of the status entry in bits. `statusSize`
-MAY be provided. If `statusSize` is not present as a property of the
-`credentialStatus`, then `statusSize` MUST be processed as `1`.  If present,
-`statusSize` MUST be an integer greater than zero. If `statusSize` is provided
-and is greater than `1`, then the property `credentialStatus.statusMessage`
-MUST be present, and the number of status messages MUST equal the
-number of possible values.
-              </td>
-            </tr>
-            <tr>
-              <td id="statusMessage">statusMessage</td>
-              <td>
-If present, the `statusMessage` property MUST be an array, the length
-of which MUST equal the number of possible status messages indicated
-by `statusSize` (e.g., `statusMessage` array MUST have 2 elements if
-`statusSize` has 1 bit, 4 elements if `statusSize` has 2 bits, 8
-elements if `statusSize` has 3 bits, etc.). `statusMessage` MAY be
-present if `statusSize` is `1`, and MUST be present if `statusSize` is
-greater than `1`.  If the `statusMessage` array is not present, the
-message values associated with the `status` bit values of `1` and `0`
-are "set" and "unset", respectively. If the `statusMessage` array is
-present, each element MUST contain the two properties described below,
-and MAY contain additional properties.
-                <ul>
-                  <li id="status">
-`status`, a string representing the hexadecimal value of the status prefixed
-with `0x`
-                  </li>
-                  <li id="message">
-`message`, a string used by software developers to assist with debugging
-which SHOULD NOT be displayed to end users.
-                  </li>
-                </ul>
-Implementers MAY add additional values to objects in the `statusMessage` array.
-Implementers MAY use the string value of `undefined` in the value to indicate
-that a corresponding status is not defined for the associated status value, but
-that it may be defined in the future. Rules for how to handle various status
-messages are outside the scope of normative requirements in this document, but
-it is assumed that implementers will document rules for processing various
-status codes.
-              </td>
-            </tr>
-            <tr>
-              <td id="statusReference">statusReference</td>
-              <td>
-An implementer MAY include the `statusReference` property. If present, its
-value MUST be a URL or an array of URLs [[URL]] which dereference to material
-related to the status. Implementers using a `statusPurpose` of `message` are
-strongly encouraged to provide a `statusReference`.
-                <p class="note" title="Details around reference">
-`statusReference` is especially important when interpretation of the status for
-a credential may involve some understanding of the business case involved.
-                </p>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-
-
-        <p>
-Status list entries can be used to express the purpose of a
-status associated with a [=verifiable credential=] by using the
-`statusPurpose` property.
-        </p>
-        <p>
-The use of `revocation` or `suspension` as the status purpose
-includes the semantics of the status, with `revocation`
-indicating that a status bit expresses whether a
-[=verifiable credential=] has been revoked and `suspension`
-indicating that a status bit expresses whether a
-[=verifiable credential=] has been suspended. The example below
-demonstrates the use of these status purposes:
-        </p>
-
-        <pre class="example nohighlight"
-             title="Example StatusListCredential using simple entries">
-{
-  "@context": [
-    "https://www.w3.org/ns/credentials/v2",
-    "https://www.w3.org/ns/credentials/examples/v2"
-  ],
-  "id": "https://example.com/credentials/23894672394",
-  "type": ["VerifiableCredential", "EmployeeIdCredential"],
-  "issuer": "did:example:12345",
-  "validFrom": "2024-04-05T14:27:42Z",
-  <span class="highlight">"credentialStatus": [{
-    "id": "https://example.com/credentials/status/3#94567",
-    "type": "BitstringStatusListEntry",
-    "statusPurpose": "revocation",
-    "statusListIndex": "94567",
-    "statusListCredential": "https://example.com/credentials/status/3"
-  }, {
-    "id": "https://example.com/credentials/status/4#23452",
-    "type": "BitstringStatusListEntry",
-    "statusPurpose": "suspension",
-    "statusListIndex": "23452",
-    "statusListCredential": "https://example.com/credentials/status/4"
-  }]</span>,
-  "credentialSubject": {
-    "id": "did:example:6789",
-    "type": "Person",
-    "employeeId": "A-123456"
-  }
-}
-        </pre>
-
-        <p>
-The use of `message` as the status purpose enables an issuer to
-define an arbitrary number of custom, descriptive messages about
-the status of the [=verifiable credential=]. The [=issuer=] commits to
-the set of messages that may be associated with a particular entry
-(i.e., with a particular [=verifiable credential=]) through the
-`statusSize`, `statusMessage`, and optional `statusReference` properties,
-at the time of [=verifiable credential=] issuance. This is to ensure that
-the [=holder=] knows what sort of information might be associated with a
-particular [=verifiable credential=] they keep in their possession, that
-could then be discoverable by a [=verifier=] that later receives that
-credential.
-        </p>
-
-        <p class="note">
-It is important to note that `statusListIndex` is the only link between
-the [=verifiable credential=] and its status in the list. Other
-properties such as `credentialSubject.id` are not used for
-this purpose.
-        </p>
-
-        <pre class="example nohighlight"
-             title="Example StatusListCredential using more complex entries">
-{
-  "@context": [
-    "https://www.w3.org/ns/credentials/v2",
-    "https://www.w3.org/ns/credentials/examples/v2"
-  ],
-  "id": "https://example.com/credentials/2947478373",
-  "type": ["VerifiableCredential", "BillOfLadingExampleCredential"],
-  "issuer": "did:example:12345",
-  "validFrom": "2024-04-05T03:52:31Z",
-  <span class="highlight">"credentialStatus": {
-    "id": "https://example.com/credentials/status/8#492847",
-    "type": "BitstringStatusListEntry",
-    "statusPurpose": "message",
-    "statusListIndex": "492847",
-    "statusSize": 2,
-    "statusListCredential": "https://example.com/credentials/status/8",
-    "statusMessage": [
-        {"status":"0x0", "message":"pending_review"},
-        {"status":"0x1", "message":"accepted"},
-        {"status":"0x2", "message":"rejected"},
-        ...
-    ],
-    "statusReference": "https://example.org/status-dictionary/"
-  }</span>,
-  "credentialSubject": {
-    "id": "did:example:6789",
-    "type": "BillOfLading",
-    ...
-  }
-}
-        </pre>
-
-      </section>
-
-      <section>
-        <h3>BitstringStatusListCredential</h3>
-
-        <p>
-When a status list [=verifiable credential=] is published, it MUST be a
-conforming document, as defined in [[VC-DATA-MODEL-2.0]], that expresses the
-data model in this section. The following section describes the format of
-the [=verifiable credential=] that encapsulates the status list.
-        </p>
-
-        <p>
-The status list is expressed inside a [=verifiable credential=] in order to
-enable a [=holder=] to provide it directly to a [=verifier=]. This mechanism,
-sometimes called "certificate stapling", increases privacy for the [=holder=] by
-ensuring that the [=verifier=] does not need to contact the [=issuer=] to
-retrieve the status list. Still, a [=verifier=] might choose to ignore the
-[=holder=]-provided status list, even when its authenticity is verifiable,
-if it desires a more recent version of a status list, for instance.
-        </p>
-
-        <p>
-[=Issuers=] and [=verifiers=] are advised that the [=issuer=] of a
-[=verifiable credential=] and the [=issuer=] of an associated
-`BitstringStatusListCredential` might not be the same. There are technical,
-legal, institutional, political, and other reasons that might make it
-appropriate to separate the authority over the original credential from the
-authority to revoke, or otherwise change the status of, such a credential.
-Therefore, the `issuer` value of a [=verifiable credential=] containing a
-`BitstringStatusListEntry` MAY be different from the `issuer` value of a
-`BitstringStatusListCredential`.
-        </p>
-
-        <table class="simple">
-          <thead>
-            <tr>
-              <th style="white-space: nowrap">Property</th>
-              <th>Description</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>id</td>
-              <td>
-The [=verifiable credential=] that contains the status list MAY
-express an `id` property that matches the value specified in
-`statusListCredential` for the corresponding
-`BitstringStatusListEntry` (see <a href="#bitstringstatuslistentry"></a>).
-              </td>
-            </tr>
-            <tr>
-              <td>type</td>
-              <td>
-The [=verifiable credential=] that contains the status list MUST
-express a `type` property that includes the
-`BitstringStatusListCredential` value.
+      包含状态列表的<a data-cite="VC#dfn-vc">可验证凭证</a>必须表达一个`type`属性，其中包括`BitstringStatusListCredential`值。
               </td>
             </tr>
             <tr>
               <td>validFrom</td>
               <td>
-The earliest point in time at which the status list is valid. This property is
-defined in the Verifiable Credentials Data Model specification in
-<a href="https://www.w3.org/TR/vc-data-model-2.0/#validity-period">
-Section 4.6: Validity Period</a>.
+      状态列表有效的最早时间点。此属性在<a href="https://www.w3.org/TR/vc-data-model-2.0/#validity-period">《可验证凭证数据模型规范》第4.6节：有效期</a>中定义。
               </td>
             </tr>
             <tr>
               <td>validUntil</td>
               <td>
-The latest point in time at which the status list is valid. This property is
-defined in the Verifiable Credentials Data Model specification in
-<a href="https://www.w3.org/TR/vc-data-model-2.0/#validity-period">
-Section 4.6: Validity Period</a>.
+      状态列表有效的最晚时间点。此属性在<a href="https://www.w3.org/TR/vc-data-model-2.0/#validity-period">《可验证凭证数据模型规范》第4.6节：有效期</a>中定义。
               </td>
             </tr>
             <tr>
               <td>credentialSubject.type</td>
               <td id="BitstringStatusList">
-The `type` of the credential [=subject=], which is the
-status list, MUST be `BitstringStatusList`.
+      凭证主体的`type`，即状态列表，必须为`BitstringStatusList`。
               </td>
             </tr>
             <tr>
               <td id="statusPurpose">credentialSubject.statusPurpose</td>
               <td>
-The value of the purpose property of the status entry, `statusPurpose`, MUST be
-one or more strings. While the value of each string is arbitrary, the following
-values MUST be used for their intended purpose:
+      状态条目的用途属性`statusPurpose`的值必须是一个或多个字符串。虽然每个字符串的值是任意的，但以下值必须用于其预期用途：
                 <table class="simple">
                   <thead>
                     <tr>
-                      <th style="white-space: nowrap">Value</th>
-                      <th>Description</th>
+                      <th style="white-space: nowrap">值</th>
+                      <th>描述</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr>
                       <td>`refresh`</td>
                       <td>
-Used to signal that an updated [=verifiable credential=] is available via the
-credential's <a data-cite="VC-DATA-MODEL-2.0#refreshing">refresh service</a>
-feature. This status does not invalidate the [=verifiable credential=] and is not reversible.
+      用于表示通过凭证的<a data-cite="VC-DATA-MODEL-2.0#refreshing">刷新服务</a>功能可获得更新的<a data-cite="VC#dfn-vc">可验证凭证</a>。此状态不会使<a data-cite="VC#dfn-vc">可验证凭证</a>失效，并且不可逆。
                       </td>
                     </tr>
                     <tr>
                       <td>`revocation`</td>
                       <td>
-Used to cancel the validity of a [=verifiable credential=]. This status is
-not reversible.
+      用于取消<a data-cite="VC#dfn-vc">可验证凭证</a>的有效性。此状态不可逆。
                       </td>
                     </tr>
                     <tr>
                       <td>`suspension`</td>
                       <td>
-Used to temporarily prevent the acceptance of a [=verifiable credential=].
-This status is reversible.
+      用于暂时阻止接受<a data-cite="VC#dfn-vc">可验证凭证</a>。此状态是可逆的。
                       </td>
                     </tr>
                     <tr>
                       <td>`message`</td>
                       <td>
-Used to indicate a status message associated with a <a>verifiable
-credential</a>. The status message descriptions MUST be defined in
-`credentialSubject.statusMessages`. `credentialSubject.statusSize` MUST be
-specified when this `statusPurpose` value is used.
+      用于指示与<a data-cite="VC#dfn-vc">可验证凭证</a>相关的状态消息。状态消息描述必须在`credentialSubject.statusMessages`中定义。当使用此`statusPurpose`值时，必须指定`credentialSubject.statusSize`。
                       </td>
                     </tr>
                   </tbody>
@@ -891,56 +605,38 @@ specified when this `statusPurpose` value is used.
             <tr>
               <td id="encodedList">credentialSubject.encodedList</td>
               <td>
-The `encodedList` property of the credential [=subject=] MUST be a
-<a data-cite="VC-DATA-INTEGRITY#multibase-0">Multibase-encoded base64url (with
-no padding)</a> [[RFC4648]] representation of the GZIP-compressed [[RFC1952]]
-bitstring values for the associated range of [=verifiable credential=]
-status values. The uncompressed bitstring MUST be at least 16KB in size. The
-bitstring MUST be encoded such that the first index, with a value of zero (`0`),
-is located at the left-most bit in the bitstring and the last index, with a
-value of one less than the length of the bitstring (`bitstring_length - 1`), is
-located at the right-most bit in the bitstring. Further information on bitstring
-encoding can be found in Section <a href="#bitstring-encoding"></a>.
+      凭证主体的`encodedList`属性必须是<a data-cite="VC-DATA-INTEGRITY#multibase-0">多基编码的base64url（无填充）</a> [[RFC4648]] 表示形式，表示与相关<a data-cite="VC#dfn-vc">可验证凭证</a>状态值范围对应的GZIP压缩[[RFC1952]]位串值。未压缩的位串必须至少为16KB大小。位串的编码方式必须确保索引为零（`0`）的值位于位串的最左侧，而索引为位串长度减一（`bitstring_length - 1`）的值位于位串的最右侧。有关位串编码的更多信息，请参见<a href="#bitstring-encoding"></a>。
               </td>
             </tr>
             <tr>
               <td id="ttl">credentialSubject.ttl</td>
               <td>
-The `ttl` is an OPTIONAL property that indicates the "time to live" in
-milliseconds before a refresh SHOULD be attempted. If not present, no default
-value is assumed. The value does not override or replace the
-<a data-cite="VC-DATA-MODEL-2.0#validity-period">validity period</a>
-of the `BitstringStatusList`. Implementations that publish the status list
-SHOULD align any protocol-specific caching information, such as the HTTP
-`Cache-Control` header, with the value in this field.
+      `ttl`是一个可选属性，表示在尝试刷新之前的“生存时间”（以毫秒为单位）。如果未提供，则不假定默认值。该值不会覆盖或替代`BitstringStatusList`的<a data-cite="VC-DATA-MODEL-2.0#validity-period">有效期</a>。发布状态列表的实现应将任何协议特定的缓存信息（例如HTTP的`Cache-Control`头）与此字段中的值对齐。
               </td>
             </tr>
           </tbody>
         </table>
 
         <p>
-The example below demonstrates how the `BitstringStatusListEntry` is used
-with a `BitstringStatusListCredential` to provide the [=verifier=] with
-the information necessary to determine the status of a particular
-[=verifiable credential=].
+      以下示例展示了如何使用`BitstringStatusListEntry`和`BitstringStatusListCredential`为<a data-cite="VC#dfn-verifier">验证者</a>提供必要的信息，以确定特定<a data-cite="VC#dfn-vc">可验证凭证</a>的状态。
         </p>
 
-        <pre class="example nohighlight" title="Example BitstringStatusListCredential">
-{
-  "@context": [
-    "https://www.w3.org/ns/credentials/v2"
-  ],
-  "id": "<span class="highlight">https://example.com/credentials/status/3</span>",
-  "type": ["VerifiableCredential", "<span class="highlight">BitstringStatusListCredential</span>"],
-  "issuer": "did:example:12345",
-  "validFrom": "2021-04-05T14:27:40Z",
-  "credentialSubject": {
-    "id": "https://example.com/status/3#list",
-    "type": "<span class="highlight">BitstringStatusList</span>",
-    "statusPurpose": "<span class="highlight">revocation</span>",
-    "encodedList": "<span class="highlight">uH4sIAAAAAAAAA-3BMQEAAADCoPVPbQwfoAAAAAAAAAAAAAAAAAAAAIC3AYbSVKsAQAAA</span>"
-  }
-}
+        <pre class="example nohighlight" title="BitstringStatusListCredential示例">
+      {
+        "@context": [
+          "https://www.w3.org/ns/credentials/v2"
+        ],
+        "id": "<span class="highlight">https://example.com/credentials/status/3</span>",
+        "type": ["VerifiableCredential", "<span class="highlight">BitstringStatusListCredential</span>"],
+        "issuer": "did:example:12345",
+        "validFrom": "2021-04-05T14:27:40Z",
+        "credentialSubject": {
+          "id": "https://example.com/status/3#list",
+          "type": "<span class="highlight">BitstringStatusList</span>",
+          "statusPurpose": "<span class="highlight">revocation</span>",
+          "encodedList": "<span class="highlight">uH4sIAAAAAAAAA-3BMQEAAADCoPVPbQwfoAAAAAAAAAAAAAAAAAAAAIC3AYbSVKsAQAAA</span>"
+        }
+      }
         </pre>
 
       </section>
@@ -948,878 +644,575 @@ the information necessary to determine the status of a particular
   </section>
 
   <section class="normative">
-    <h2>Algorithms</h2>
+   <h2 id="algorithms">算法</h2>
 
+   <p>
+   以下部分概述了本文档中描述的用于生成和验证状态列表的算法。
+   </p>
+
+   <p>
+   如果本节中的任何算法在处理第<a href="#data-model"></a>节中定义的属性时，由于未遵守相关的“必须（MUST）”声明而导致值格式错误，则必须引发<a data-cite="VC-DATA-MODEL-2.0#MALFORMED_VALUE_ERROR">MALFORMED_VALUE_ERROR</a>。
+   </p>
+
+   <section class="normative">
+     <h3>生成算法</h3>
+
+     <p>
+   在生成<a href="#bitstringstatuslistcredential">Bitstring状态列表凭证</a>时，必须遵循以下过程或生成完全相同的输出。该算法以|已发行凭证|列表作为输入，并抛出错误或返回状态列表凭证作为输出。
+     </p>
+
+     <ol class="algorithm">
+       <li>
+   令|已发行凭证|为所有已发行的<a data-cite="VC#dfn-vc">可验证凭证</a>的列表。
+       </li>
+       <li>
+   令|状态列表凭证|为一个未签名的<a href="#bitstringstatuslistcredential">Bitstring状态列表凭证</a>，且未设置`encodedList`属性。
+       </li>
+       <li>
+   通过将|已发行凭证|传递给<a href="#bitstring-generation-algorithm">位串生成算法</a>生成|压缩位串|。
+       </li>
+       <li>
+   将`encodedList`设置为|压缩位串|。
+       </li>
+       <li>
+   为|状态列表凭证|生成一个证明，并将其发布到<a data-cite="VC#dfn-vc">可验证凭证</a>中列出的端点。
+       </li>
+     </ol>
+
+     <p>
+   <a data-cite="VC#dfn-issuers">发行者</a>应以可缓存且不会跟踪谁检索状态列表凭证的方式发布状态列表凭证，例如通过[[[RFC9458]]]、由非<a data-cite="VC#dfn-issuers">发行者</a>运营的内容分发网络，或数据分析师或系统管理员无法访问访问日志的业务流程。
+     </p>
+
+   </section>
+
+   <section class="normative">
+     <h3 id="validate-algorithm">验证算法</h3>
+
+     <p>
+   在验证包含于<a href="#bitstringstatuslistcredential">Bitstring状态列表凭证</a>中的<a data-cite="VC#dfn-vc">可验证凭证</a>时，必须遵循以下过程或生成完全相同的输出。该算法以状态列表<a data-cite="VC#dfn-vc">可验证凭证</a>作为输入，并抛出错误或返回状态列表凭证作为输出。
+     </p>
+
+     <ol class="algorithm">
+       <li>
+   令|待验证凭证|为包含`credentialStatus`条目的<a data-cite="VC#dfn-vc">可验证凭证</a>，该条目是<a href="#bitstringstatuslistentry">Bitstring状态列表条目</a>。
+       </li>
+       <li>
+   令|最小条目数|为131,072，除非特定生态系统规范建立了不同的下限。
+       </li>
+       <li>
+   令|状态用途|为|待验证凭证|中`credentialStatus`条目中的`statusPurpose`值。
+       </li>
+       <li>
+   解析`statusListCredential` URL，并确保所有证明验证成功。如果解析失败，则引发<a href="#STATUS_RETRIEVAL_ERROR">STATUS_RETRIEVAL_ERROR</a>。如果任何证明验证失败，则引发<a href="#STATUS_VERIFICATION_ERROR">STATUS_VERIFICATION_ERROR</a>。
+       </li>
+       <li>
+   验证|状态用途|是否等于|状态列表凭证|中的`statusPurpose`值。注意：|状态列表凭证|可能在单个列表中包含多个状态用途。如果值不相等，则引发<a href="#STATUS_VERIFICATION_ERROR">STATUS_VERIFICATION_ERROR</a>。
+       </li>
+       <li>
+   令|压缩位串|为<a href="#bitstringstatuslistcredential">Bitstring状态列表凭证</a>的`encodedList`属性的值。
+       </li>
+       <li>
+   令|凭证索引|为<a href="#bitstringstatuslistentry">Bitstring状态列表条目</a>的`statusListIndex`属性的值。
+       </li>
+       <li>
+   通过将|压缩位串|传递给<a href="#bitstring-expansion-algorithm">位串展开算法</a>生成|撤销位串|。
+       </li>
+       <li>
+   如果|撤销位串|的长度除以<a href="#statusSize">`statusSize`</a>小于|最小条目数|，则引发<a href="#STATUS_LIST_LENGTH_ERROR">STATUS_LIST_LENGTH_ERROR</a>。
+       </li>
+       <li>
+   令|状态|为|位串|中由|凭证索引|乘以|大小|指示的位置的值。如果|凭证索引|乘以|大小|的值超出|位串|的范围，则必须引发<a data-cite="VC-DATA-MODEL-2.0#RANGE_ERROR">RANGE_ERROR</a>。
+       </li>
+       <li>
+   令|结果|为一个空的<a data-cite="INFRA#ordered-map">映射</a>。
+       </li>
+       <li>
+   将|结果|中的`status`键设置为|状态|，并将`purpose`键设置为`statusPurpose`的值。
+       </li>
+       <li>
+   如果|状态|为`0`，将|结果|中的`valid`键设置为`true`；否则，将其设置为`false`。
+       </li>
+       <li>
+   如果`statusPurpose`为`message`，将|结果|中的`message`键设置为`statusMessages`数组中对应`value`的消息。
+       </li>
+       <li>
+   返回|结果|。
+       </li>
+     </ol>
+
+     <p>
+   当解析`statusListCredential` URL时，服务器实现可以提供一种机制，以解析特定时间点的状态列表。当<a data-cite="VC#dfn-issuers">发行者</a>提供此类机制时，它使<a data-cite="VC#dfn-verifier">验证者</a>能够以发行者选择的精度（例如每小时、每天或每周）确定状态的变化。如果支持此功能，并且URL方案支持查询参数，则查询参数的名称必须为`timestamp`，其值必须是有效的URL编码[[XMLSCHEMA11-2]] dateTimeStamp字符串值。解析此类带时间戳参数的URL的结果必须是包含给定时间点状态列表的状态列表凭证，或<a href="#STATUS_RETRIEVAL_ERROR">STATUS_RETRIEVAL_ERROR</a>。如果结果是错误，实现可以尝试使用不同的时间戳值或不带时间戳值再次检索，只要<a data-cite="VC#dfn-verifier">验证者</a>的验证规则允许此类操作。
+     </p>
+
+     <p>
+   <a data-cite="VC#dfn-verifier">验证者</a>应缓存检索到的状态列表，并应使用代理或其他机制（例如[[[RFC9458]]]），以隐藏检索行为不被<a data-cite="VC#dfn-issuers">发行者</a>发现。
+     </p>
+
+     <p class="note" title="发行者验证取决于用例">
+   预计<a data-cite="VC#dfn-verifier">验证者</a>将确保其信任<a data-cite="VC#dfn-vc">可验证凭证</a>的发行者以及相关<a href="#bitstringstatuslistcredential">Bitstring状态列表凭证</a>的发行者，然后再使用这两个凭证中包含的信息进行进一步的决策。建议实现者注意，这些凭证的发行者可能不同，例如当<a data-cite="VC#dfn-vc">可验证凭证</a>的原始发行者不维护其有效性记录时。
+     </p>
+
+   </section>
+  <section class="normative">
+    <h3 id="bitstring-generation-algorithm">位串生成算法</h3>
     <p>
-The following section outlines the algorithms that are used to generate
-and validate status lists as described by this document.
+  以下过程或生成完全相同输出的过程，必须（MUST）在生成状态列表位串时遵循。该算法以|已发行凭证|列表作为输入，并抛出错误或返回|压缩位串|作为输出。
     </p>
 
-    <p>
-If an implementation of any of the algorithms in this section processes a property
-defined in Section <a href="#data-model"></a> whose value is malformed due to
-not complying with associated "MUST" statements, a
-<a data-cite="VC-DATA-MODEL-2.0#MALFORMED_VALUE_ERROR">MALFORMED_VALUE_ERROR</a>
-MUST be raised.
-    </p>
-
-    <section class="normative">
-      <h3>Generate Algorithm</h3>
-
-      <p>
-The following process, or one generating the exact output, MUST be followed
-when producing a
-<a href="#bitstringstatuslistcredential">BitstringStatusListCredential</a>.
-The algorithm takes a list of |issued credentials| as input and either throws
-an error or returns a status list credential as output.
-      </p>
-
-      <ol class="algorithm">
-        <li>
-Let |issued credentials| be a list of all issued
-[=verifiable credentials=].
-        </li>
-        <li>
-Let |statusListCredential| be an unsigned
-<a href="#bitstringstatuslistcredential">BitstringStatusListCredential</a>
-without the `encodedList` property set.
-        </li>
-        <li>
-Generate a |compressed bitstring| by passing
-|issued credentials| to the
-<a href="#bitstring-generation-algorithm">Bitstring Generation Algorithm</a>.
-        </li>
-        <li>
-Set the `encodedList` to |compressed bitstring|.
-        </li>
-        <li>
-Generate a proof for the |statusListCredential| and publish it to the
-endpoint listed in the [=verifiable credential=].
-        </li>
-      </ol>
-
-      <p>
-[=Issuers=] SHOULD publish status list credentials in a way that can be cached
-and that does not track who retrieves the status list credential, such as
-through [[[RFC9458]]], a content distribution network that is not operated by
-the [=issuer=], or business processes for which the access logs are not
-accessible by data analysts or systems administrators.
-      </p>
-
-    </section>
-
-    <section class="normative">
-      <h3>Validate Algorithm</h3>
-
-      <p>
-The following process, or one generating the exact output, MUST be followed
-when validating a [=verifiable credential=] that is contained in a
-<a href="#bitstringstatuslistcredential">BitstringStatusListCredential</a>.
-The algorithm takes a status list [=verifiable credential=] as input
-and either throws an error or returns a status list credential as output.
-      </p>
-
-      <ol class="algorithm">
-        <li>
-Let |credentialToValidate| be a [=verifiable credential=]
-containing a `credentialStatus` entry that is a
-<a href="#bitstringstatuslistentry">BitstringStatusListEntry</a>.
-        </li>
-        <li>
-Let |minimumNumberOfEntries| be 131,072 unless a different lower bound is
-established by a specific ecosystem specification.
-        </li>
-        <li>
-Let |status purpose| be the value of `statusPurpose`
-in the `credentialStatus` entry in the
-|credentialToValidate|.
-        </li>
-        <li>
-Dereference the `statusListCredential` URL, and ensure that all
-proofs verify successfully. If the dereference fails, raise a
-<a href="#STATUS_RETRIEVAL_ERROR">STATUS_RETRIEVAL_ERROR</a>. If any of the
-proof verifications fail, raise a
-<a href="#STATUS_VERIFICATION_ERROR">STATUS_VERIFICATION_ERROR</a>.
-        </li>
-        <li>
-Verify that the |status purpose| is equal to a `statusPurpose` value in the
-|statusListCredential|. Note: The |statusListCredential| might contain multiple
-status purposes in a single list. If the values are not
-equal, raise a
-<a href="#STATUS_VERIFICATION_ERROR">STATUS_VERIFICATION_ERROR</a>.
-        </li>
-        <li>
-Let |compressed bitstring| be the value of the
-`encodedList` property of the
-<a href="#bitstringstatuslistcredential">BitstringStatusListCredential</a>.
-        </li>
-        <li>
-Let |credentialIndex| be the value of the
-`statusListIndex` property of the
-<a href="#bitstringstatuslistentry">BitstringStatusListEntry</a>.
-        </li>
-        <li>
-Generate a |revocation bitstring| by passing
-|compressed bitstring| to the
-<a href="#bitstring-expansion-algorithm">Bitstring Expansion Algorithm</a>.
-        </li>
-        <li>
-If the length of the |revocation bitstring| divided by
-<a href="#statusSize">`statusSize`</a> is less than |minimumNumberOfEntries|,
-raise a <a href="#STATUS_LIST_LENGTH_ERROR">STATUS_LIST_LENGTH_ERROR</a>.
-        </li>
-        <li>
-Let |status| be the value in the |bitstring| at the position indicated
-by the |credentialIndex| multiplied by the |size|. If the |credentialIndex|
-multiplied by the |size| is a value outside of the range of the |bitstring|, a
-<a data-cite="VC-DATA-MODEL-2.0#RANGE_ERROR">RANGE_ERROR</a> MUST be
-raised.
-        </li>
-        <li>
-Let |result| be an empty [=map=].
-        </li>
-        <li>
-Set the `status` key in |result| to |status|, and set the `purpose` key in
-|result| to the value of `statusPurpose`.
-        </li>
-        <li>
-If |status| is `0`, set the `valid` key in |result| to `true`; otherwise, set it
-to `false`.
-        </li>
-        <li>
-If the `statusPurpose` is `message`, set the `message` key in |result| to the
-corresponding `message` of the `value` as indicated in the `statusMessages`
-array.
-        </li>
-        <li>
-Return |result|.
-        </li>
-      </ol>
-
-      <p>
-When a `statusListCredential` URL is dereferenced, server implementations MAY
-provide a mechanism to dereference the status list as of a particular point in
-time. When an [=issuer=] provides such a mechanism, it enables a
-[=verifier=] to determine changes in status to a precision chosen by the
-issuer, such as hourly, daily, or weekly. If such a feature is supported, and if
-query parameters are supported by the URL scheme, then the name of the query
-parameter MUST be `timestamp` and the value MUST be a valid URL-encoded
-[[XMLSCHEMA11-2]] dateTimeStamp string value. The result of dereferencing such a
-timestamp-parameterized URL MUST be either a status list credential containing
-the status list as it existed at the given point in time, or a
-<a href="#STATUS_RETRIEVAL_ERROR">STATUS_RETRIEVAL_ERROR</a>. If the result is
-an error, implementations MAY attempt the retrieval again with a different
-timestamp value, or without a timestamp value, as long as the [=verifier=]'s
-validation rules permit such an action.
-      </p>
-
-      <p>
-[=Verifiers=] SHOULD cache the retrieved status list and SHOULD use proxies
-or other mechanisms, such as [[[RFC9458]]], that hide retrieval behavior from
-the [=issuer=].
-      </p>
-
-      <p class="note" title="Issuer validation is use case dependent">
-It is expected that a [=verifier=] will ensure that it trusts the issuer
-of a [=verifiable credential=], as well as the issuer of the associated
-<a href="#bitstringstatuslistcredential">BitstringStatusListCredential</a>,
-before using the information contained in either credential for further
-decision making purposes. Implementers are advised that the issuers of these
-credential might differ, such as when the original issuer of the
-[=verifiable credential=] does not maintain a record of its validity.
-      </p>
-
-    </section>
-
-    <section class="normative">
-      <h3>Bitstring Generation Algorithm</h3>
-      <p>
-The following process, or one generating the exact output, MUST be followed
-when generating a status list bitstring. The algorithm takes an
-|issuedCredentials| list as input and either throws an error or returns a
-|compressed bitstring| as output.
-      </p>
-
-      <ol class="algorithm">
-        <li>
-Let |bitstring| be a list of bits with a minimum size of 16KB,
-where each bit is initialized to 0 (zero).
-        </li>
-        <li>
-For each value in `bitstring`, if there is a
-corresponding `statusListIndex` value in
-a credential in `issuedCredentials`, set the value to the
-appropriate status. The position of the value is computed as `statusListIndex`
-times the `statusSize`.
-        </li>
-        <li>
-Generate a |compressed bitstring| by using the GZIP
-compression algorithm [[RFC1952]] on the |bitstring|
-and then <a data-cite="?CID#multibase-0">Multibase-encode</a> the result using base64url (with no padding).
-        </li>
-        <li>
-Return the |compressed bitstring|.
-        </li>
-      </ol>
-    </section>
-
-    <section class="normative">
-      <h3>Bitstring Expansion Algorithm</h3>
-
-      <p>
-The following process, or one generating the exact output, MUST be followed
-when expanding a compressed status list bitstring. The algorithm takes a
-|compressed bitstring| as input and either throws an error or returns a
-|uncompressed bitstring| as output.
-      </p>
-
-      <ol class="algorithm">
-        <li>
-Let |compressed bitstring| be a compressed status list
-bitstring.
-        </li>
-        <li>
-Generate an |uncompressed bitstring| by using the
-<a data-cite="?CID#multibase-0">Multibase-decode</a> algorithm on the
-|compressed bitstring| and then expanding the output using
-the GZIP decompression algorithm [[RFC1952]].
-        </li>
-        <li>
-Return the |uncompressed bitstring|.
-        </li>
-      </ol>
-    </section>
-
-    <section class="normative">
-      <h3>Processing Errors</h3>
-
-      <p>
-The algorithms described in this specification throw specific types of errors.
-Implementers might find it useful to convey these errors to other libraries or
-software systems. This section provides specific URLs, descriptions, and error
-codes for the errors, such that an ecosystem implementing technologies described
-by this specification might interoperate more effectively when errors occur.
-      </p>
-
-      <p>
-When exposing these errors through an HTTP interface, implementers SHOULD use
-[[[RFC9457]]] [[RFC9457]] to encode the error data structure. If [[RFC9457]] is
-used:
-      </p>
-
-      <ul>
-        <li>
-The `type` value of the error object MUST be a URL that starts with the value
-`https://www.w3.org/ns/credentials/status-list#` and ends with the value in the
-section listed below.
-        </li>
-        <li>
-The `title` value SHOULD provide a short but specific human-readable string for
-the error.
-        </li>
-        <li>
-The `detail` value SHOULD provide a longer human-readable string for the error.
-        </li>
-        <li>
-All human-readable strings SHOULD be localized as described in Section 1 of
-[[[RFC9457]]], using [=language negotiation=] through the `Accept-Language`
-HTTP header field to select the most appropriate resources.
-        </li>
-      </ul>
-
-      <dl>
-        <dt id="STATUS_RETRIEVAL_ERROR">
-STATUS_RETRIEVAL_ERROR
-        </dt>
-        <dd>
-Retrieval of the status list failed. See Section
-<a href="#validate-algorithm"></a>.
-        </dd>
-        <dt id="STATUS_VERIFICATION_ERROR">STATUS_VERIFICATION_ERROR</dt>
-        <dd>
-Validation of the status entry failed. See Section
-<a href="#validate-algorithm"></a>.
-        </dd>
-        <dt id="STATUS_LIST_LENGTH_ERROR">
-STATUS_LIST_LENGTH_ERROR
-        </dt>
-        <dd>
-The status list length does not satisfy the minimum length required for
-herd privacy. See Section <a href="#validate-algorithm"></a>.
-        </dd>
-      </dl>
-    </section>
-    <section class="normative">
-      <h3>Securing Algorithms</h3>
-      <p>
-There are multiple ways that the information in Section
-<a href="#data-model"></a> can be secured. These mechanisms are elaborated
-upon in the
-<a data-cite="VC-DATA-MODEL-2.0#securing-mechanisms">Securing Mechanisms</a>
-section of the [[[VC-DATA-MODEL-2.0]]].
-      </p>
-      <p>
-When securing a [=verifiable credential=] that contains a reference to
-a <a href="#bitstringstatuslistcredential">BitstringStatusListCredential</a>,
-implementers SHOULD use the same securing mechanism with the same
-cryptographic parameters and the same media type for both
-[=verifiable credentials=].
-      </p>
-    </section>
-
+    <ol class="algorithm">
+      <li>
+  令|位串|为一个最小大小为16KB的位列表，其中每个位初始化为0（零）。
+      </li>
+      <li>
+  对于`位串`中的每个值，如果`已发行凭证`中的某个凭证具有对应的`statusListIndex`值，则将该值设置为适当的状态。值的位置通过`statusListIndex`乘以`statusSize`计算。
+      </li>
+      <li>
+  使用GZIP压缩算法[[RFC1952]]对|位串|进行压缩生成|压缩位串|，然后使用base64url（无填充）<a data-cite="?CID#multibase-0">多基编码</a>对结果进行编码。
+      </li>
+      <li>
+  返回|压缩位串|。
+      </li>
+    </ol>
   </section>
 
   <section class="normative">
-    <h2>Media Types</h2>
+    <h3 id="bitstring-expansion-algorithm">位串展开算法</h3>
 
     <p>
-When dereferencing `statusListCredential`, the content of the returned
-`statusListCredential` might be any media type registered for the purpose of
-expressing a verifiable credential with one or more proofs.
+  以下过程或生成完全相同输出的过程，必须（MUST）在展开压缩状态列表位串时遵循。该算法以|压缩位串|作为输入，并抛出错误或返回|未压缩位串|作为输出。
+    </p>
+
+    <ol class="algorithm">
+      <li>
+  令|压缩位串|为一个压缩的状态列表位串。
+      </li>
+      <li>
+  使用<a data-cite="?CID#multibase-0">多基解码</a>算法对|压缩位串|进行解码，然后使用GZIP解压缩算法[[RFC1952]]展开输出，生成|未压缩位串|。
+      </li>
+      <li>
+  返回|未压缩位串|。
+      </li>
+    </ol>
+  </section>
+
+  <section class="normative">
+    <h3>处理错误</h3>
+
+    <p>
+  本规范中描述的算法会抛出特定类型的错误。实现者可能会发现将这些错误传递给其他库或软件系统是有用的。本节提供了错误的特定URL、描述和错误代码，以便实现本规范所述技术的生态系统在发生错误时能够更有效地互操作。
+    </p>
+
+    <p>
+  当通过HTTP接口暴露这些错误时，实施者应（SHOULD）使用[[[RFC9457]]]来编码错误数据结构。如果使用[[RFC9457]]：
+    </p>
+
+    <ul>
+      <li>
+  错误对象的`type`值必须（MUST）是以`https://www.w3.org/ns/credentials/status-list#`开头并以下文列出的值结尾的URL。
+      </li>
+      <li>
+  `title`值应（SHOULD）提供一个简短但具体的、可供人类阅读的错误字符串。
+      </li>
+      <li>
+  `detail`值应（SHOULD）提供一个更长的、可供人类阅读的错误字符串。
+      </li>
+      <li>
+  所有可供人类阅读的字符串应（SHOULD）按照[[[RFC9457]]]第1节中描述的方式进行本地化，使用`Accept-Language` HTTP头字段通过<a data-cite="I18N-GLOSSARY#dfn-language-negotiation">语言协商</a>选择最合适的资源。
+      </li>
+    </ul>
+
+    <dl>
+      <dt id="STATUS_RETRIEVAL_ERROR">
+  STATUS_RETRIEVAL_ERROR
+      </dt>
+      <dd>
+  状态列表的检索失败。参见第<a href="#validate-algorithm"></a>节。
+      </dd>
+      <dt id="STATUS_VERIFICATION_ERROR">STATUS_VERIFICATION_ERROR</dt>
+      <dd>
+  状态条目的验证失败。参见第<a href="#validate-algorithm"></a>节。
+      </dd>
+      <dt id="STATUS_LIST_LENGTH_ERROR">
+  STATUS_LIST_LENGTH_ERROR
+      </dt>
+      <dd>
+  状态列表长度未满足群体隐私所需的最小长度要求。参见第<a href="#validate-algorithm"></a>节。
+      </dd>
+    </dl>
+  </section>
+
+  <section class="normative">
+    <h3>算法安全性</h3>
+    <p>
+  第<a href="#data-model"></a>节中的信息可以通过多种方式进行保护。这些机制在[[[VC-DATA-MODEL-2.0]]]的<a data-cite="VC-DATA-MODEL-2.0#securing-mechanisms">安全机制</a>部分中详细说明。
     </p>
     <p>
-For example, a verifiable credential secured with Data Integrity Proofs might
-have media type `application/vc`, while a verifiable credential
-secured with SD-JWT might have media type `application/sd-jwt`.
+  当保护包含对<a href="#bitstringstatuslistcredential">Bitstring状态列表凭证</a>引用的<a data-cite="VC#dfn-vc">可验证凭证</a>时，实施者应（SHOULD）对两个<a data-cite="VC#dfn-vc">可验证凭证</a>使用相同的保护机制、相同的加密参数和相同的媒体类型。
     </p>
-    <p>
-Some implementations might choose to support less specific media types such as
-`application/ld+json` or `application/json`.
-    </p>
-    <p>
-When dereferencing over HTTP, the use of the
-<a data-cite="?RFC7231#rfc.section.5.3.2">accept</a> and
-<a data-cite="?RFC7231#rfc.section.3.1.1.5">content-type</a> headers, might
-allow some implementations to negotiate for the proof format used to secure the
-`statusListCredential`.
-    </p>
-    <p>
-Some implementations might use the
-<a data-cite="?RFC7231#rfc.section.6.5.13">415 Unsupported Media Type</a> status
-code to signal that they do not support the requested media type.
-    </p>
+  </section>
+  </section>
+
+ <section class="normative">
+      <h2>媒体类型</h2>
+
+      <p>
+  在解析 `statusListCredential` 时，返回的 `statusListCredential` 内容可能是任何用于表达具有一个或多个证明的可验证凭证的已注册媒体类型。
+      </p>
+      <p>
+  例如，使用数据完整性证明保护的可验证凭证可能具有媒体类型 `application/vc`，而使用 SD-JWT 保护的可验证凭证可能具有媒体类型 `application/sd-jwt`。
+      </p>
+      <p>
+  某些实现可能选择支持更不具体的媒体类型，例如 `application/ld+json` 或 `application/json`。
+      </p>
+      <p>
+  在通过 HTTP 解析时，使用
+  <a data-cite="?RFC7231#rfc.section.5.3.2">accept</a> 和
+  <a data-cite="?RFC7231#rfc.section.3.1.1.5">content-type</a> 头，可能允许某些实现协商用于保护 `statusListCredential` 的证明格式。
+      </p>
+      <p>
+  某些实现可能使用
+  <a data-cite="?RFC7231#rfc.section.6.5.13">415 Unsupported Media Type</a> 状态码来表示它们不支持请求的媒体类型。
+      </p>
   </section>
 
   <section>
-    <h2>Contexts and Vocabularies</h2>
+      <h2>上下文和词汇表</h2>
 
-    <section>
-      <h2>Vocabulary</h2>
-      <p>
-The terms defined in this specification are also part of the RDF <a
-data-cite="RDF-CONCEPTS#vocabularies">vocabulary namespace</a>
-<a href="https://www.w3.org/ns/credentials/status">https://www.w3.org/ns/credentials/status#</a>. For any
-`TERM`, the relevant URL is of the form `https://www.w3.org/ns/credentials/status#TERM`.
-Implementations that use RDF processing and rely on this specification MUST use
-these URLs.
-      </p>
+      <section>
+        <h2 id="vocabulary">词汇表</h2>
+        <p>
+  本规范中定义的术语也是 RDF <a
+  data-cite="RDF-CONCEPTS#vocabularies">词汇表命名空间</a>
+  <a href="https://www.w3.org/ns/credentials/status">https://www.w3.org/ns/credentials/status#</a> 的一部分。对于任何 `TERM`，相关的 URL 形式为 `https://www.w3.org/ns/credentials/status#TERM`。
+  依赖于本规范并使用 RDF 处理的实现必须（MUST）使用这些 URL。
+        </p>
 
-      <p>
-When dereferencing the
-<a href="https://www.w3.org/ns/credentials/status">https://www.w3.org/ns/credentials/status#</a> URL, the
-media type of the data that is returned depends on HTTP content negotiation.
-These are as follows:
-      </p>
+        <p>
+  在解析
+  <a href="https://www.w3.org/ns/credentials/status">https://www.w3.org/ns/credentials/status#</a> URL 时，返回数据的媒体类型取决于 HTTP 内容协商。如下所示：
+        </p>
 
-      <table class="simple">
-        <thead>
-          <tr>
-            <th>Media Type</th>
-            <th>Description and Hash</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>
-application/ld+json
-            </td>
-            <td>
-The vocabulary in JSON-LD format [[?JSON-LD11]].<br>
+        <table class="simple">
+          <thead>
+            <tr>
+              <th>媒体类型</th>
+              <th>描述和哈希</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+  application/ld+json
+              </td>
+              <td>
+  JSON-LD 格式的词汇表 [[?JSON-LD11]]。<br>
 
-<strong>SHA2-256 Digest:</strong>
-<code><span class="vc-hash"
-  data-hash-url="https://w3c.github.io/vc-bitstring-status-list/vocab/vocabulary.jsonld"
-  data-hash-format="openssl dgst -sha256" /></code>
-            </td>
-          </tr>
-          <tr>
-            <td>
-text/turtle
-            </td>
-            <td>
-The vocabulary in Turtle format [[?TURTLE]].<br>
+  <strong>SHA2-256 摘要：</strong>
+  <code><span class="vc-hash"
+    data-hash-url="https://w3c.github.io/vc-bitstring-status-list/vocab/vocabulary.jsonld"
+    data-hash-format="openssl dgst -sha256" /></code>
+              </td>
+            </tr>
+            <tr>
+              <td>
+  text/turtle
+              </td>
+              <td>
+  Turtle 格式的词汇表 [[?TURTLE]]。<br>
 
-<strong>SHA2-256 Digest:</strong>
-<code><span class="vc-hash"
-  data-hash-url="https://w3c.github.io/vc-bitstring-status-list/vocab/vocabulary.ttl"
-  data-hash-format="openssl dgst -sha256" /></code>
-            </td>
-          </tr>
-          <tr>
-            <td>
-text/html
-            </td>
-            <td>
-The vocabulary in HTML+RDFa Format [[?HTML-RDFA]].<br>
+  <strong>SHA2-256 摘要：</strong>
+  <code><span class="vc-hash"
+    data-hash-url="https://w3c.github.io/vc-bitstring-status-list/vocab/vocabulary.ttl"
+    data-hash-format="openssl dgst -sha256" /></code>
+              </td>
+            </tr>
+            <tr>
+              <td>
+  text/html
+              </td>
+              <td>
+  HTML+RDFa 格式的词汇表 [[?HTML-RDFA]]。<br>
 
 
-<strong>SHA2-256 Digest:</strong>
-<code><span class="vc-hash"
-  data-hash-url="https://w3c.github.io/vc-bitstring-status-list/vocab/vocabulary.html"
-  data-hash-format="openssl dgst -sha256" /></code>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+  <strong>SHA2-256 摘要：</strong>
+  <code><span class="vc-hash"
+    data-hash-url="https://w3c.github.io/vc-bitstring-status-list/vocab/vocabulary.html"
+    data-hash-format="openssl dgst -sha256" /></code>
+              </td>
+            </tr>
+          </tbody>
+        </table>
 
-      <p>
-It is possible to confirm the cryptographic digests above by running a command
-like the following (replacing `&lt;MEDIA_TYPE>` and `&lt;DOCUMENT_URL>` with the
-appropriate values) through a modern UNIX-like OS command line interface:
-`curl -sL -H "Accept: &lt;MEDIA_TYPE>" &lt;DOCUMENT_URL> | openssl dgst -sha256`
-      </p>
-    </section>
+        <p>
+  可以通过在现代类 UNIX 操作系统的命令行界面中运行如下命令（用适当的值替换 `&lt;MEDIA_TYPE>` 和 `&lt;DOCUMENT_URL>`）来确认上述加密摘要：
+  `curl -sL -H "Accept: &lt;MEDIA_TYPE>" &lt;DOCUMENT_URL> | openssl dgst -sha256`
+        </p>
+      </section>
 
-    <section>
-      <h3>JSON-LD context</h3>
-      <p>
-Implementations that perform JSON-LD processing MUST treat the following JSON-LD
-context URL as already resolved, where the resolved document matches the
-corresponding hash value below:
-      </p>
+      <section>
+        <h3>JSON-LD 上下文</h3>
+        <p>
+  执行 JSON-LD 处理的实现必须（MUST）将以下 JSON-LD 上下文 URL 视为已解析，其中解析的文档与下面的对应哈希值匹配：
+        </p>
 
-      <table class="simple">
-        <thead>
-          <th>Context URL and Hash</th>
-        </thead>
-        <tbody>
-          <tr>
-            <td style="white-space: nowrap;">
-<strong>URL:</strong> https://www.w3.org/ns/credentials/status/v1<br>
-<strong>SHA2-256 Digest:</strong><br>
-<code><span class="vc-hash"
-  data-hash-url="https://w3c.github.io/vc-bitstring-status-list/contexts/v1.jsonld"
-  data-hash-format="openssl dgst -sha256" /></code>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+        <table class="simple">
+          <thead>
+            <th>上下文 URL 和哈希</th>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="white-space: nowrap;">
+  <strong>URL：</strong> https://www.w3.org/ns/credentials/status/v1<br>
+  <strong>SHA2-256 摘要：</strong><br>
+  <code><span class="vc-hash"
+    data-hash-url="https://w3c.github.io/vc-bitstring-status-list/contexts/v1.jsonld"
+    data-hash-format="openssl dgst -sha256" /></code>
+              </td>
+            </tr>
+          </tbody>
+        </table>
 
-      <p>
-It is possible to confirm the cryptographic digests listed above by running a
-command like the following through a modern UNIX-like OS command line interface:
-`curl -sL -H "Accept: application/ld+json" https://www.w3.org/ns/credentials/status/v1 | openssl dgst -sha256`
-      </p>
+        <p>
+  可以通过在现代类 UNIX 操作系统的命令行界面中运行如下命令来确认列出的加密摘要：
+  `curl -sL -H "Accept: application/ld+json" https://www.w3.org/ns/credentials/status/v1 | openssl dgst -sha256`
+        </p>
 
-      <p>
-The vocabulary terms that the JSON-LD contexts resolve to
-are in the <a href="https://www.w3.org/ns/credentials/status">https://www.w3.org/ns/credentials/status#</a>
-namespace. See Section [[[#vocabulary]]] for further details.
-      </p>
+        <p>
+  JSON-LD 上下文解析到的词汇表术语位于
+  <a href="https://www.w3.org/ns/credentials/status">https://www.w3.org/ns/credentials/status#</a>
+  命名空间中。有关详细信息，请参见第 [[[#vocabulary]]] 节。
+        </p>
 
-      <p class="note">
-Applications or specifications may define mappings to the vocabulary URLs using
-their own JSON-LD contexts. For example, the JSON-LD context definitions
-referred to in this section are also a part of the
-`https://www.w3.org/ns/credentials/v2` context, defined by the
-[[[?VC-DATA-MODEL-2.0]]] specification.
-      </p>
-    </section>
+        <p class="note">
+  应用程序或规范可以使用它们自己的 JSON-LD 上下文定义到词汇表 URL 的映射。例如，本节中引用的 JSON-LD 上下文定义也是
+  [[[?VC-DATA-MODEL-2.0]]] 规范定义的
+  `https://www.w3.org/ns/credentials/v2` 上下文的一部分。
+        </p>
+      </section>
   </section>
-
-  <section class="informative">
-    <h2>Privacy Considerations</h2>
+<section class="informative">
+    <h2>隐私注意事项</h2>
 
     <p>
-This section details the general privacy considerations and specific privacy
-implications of deploying this specification into production environments.
+本节详细说明了将本规范部署到生产环境中的一般隐私注意事项和具体隐私影响。
     </p>
 
     <p>
-Readers are urged to familiarize themselves with the general
-privacy advice provided in the
-<a href="https://www.w3.org/TR/vc-data-model-2.0/#privacy-considerations">
-Privacy Considerations section of the Verifiable Credentials
-specification</a> before reading this section.
+建议读者在阅读本节之前，先熟悉<a href="https://www.w3.org/TR/vc-data-model-2.0/#privacy-considerations">《可验证凭证规范》中的隐私注意事项部分</a>中提供的一般隐私建议。
     </p>
 
     <section class="informative">
-      <h3>Revocation Bitstring Length</h3>
+      <h3>撤销位串长度</h3>
 
       <p>
-This document specifies a minimum revocation bitstring length of 131,072, or
-16KB uncompressed. This is enough to give [=holders=] an adequate amount of
-group privacy if the number of verifiable credentials issued is large enough.
-However, if the number of issued verifiable credentials is a small population,
-the ability to correlate an individual increases because the number of allocated
-slots in the bitstring is small. Correlating this information with, for example,
-where the geographic request came from can also help to correlate individuals
-that have received a credential from the same geographic region.
+本文档规定了最小撤销位串长度为131,072位，或16KB未压缩。这足以在颁发的可验证凭证数量足够大的情况下，为<a data-cite="VC#dfn-holders">持有者</a>提供足够的群体隐私。然而，如果颁发的可验证凭证数量较少，由于位串中分配的槽位较少，关联个人的能力会增加。例如，将此信息与地理请求来源相关联，也可能有助于关联从同一地理区域接收凭证的个人。
       </p>
     </section>
 
     <section class="informative">
-      <h3>Unnecessary Correlation</h3>
+      <h3>不必要的关联</h3>
 
       <p>
-There are a number of global identifiers used in a status list entry, defined in
-Section [[[#bitstringstatuslistentry]]], that can be used across [=verifiers=]
-to correlate [=subjects=]. Some of the properties that can
-express these values are `id`, `statusListIndex`, and
-`statusListCredential`.
+状态列表条目中定义的多个全局标识符（参见第[[[#bitstringstatuslistentry]]]节）可以被<a data-cite="VC#dfn-verifier">验证者</a>用来关联主体。这些值可以通过`id`、`statusListIndex`和`statusListCredential`等属性表达。
       </p>
 
       <p>
-In some cases, such as when [=presentations|presenting=] a [=verifiable
-credential=] that contains a global identifier (such as a driver's license
-identification number), adding one or more global identifier(s) for status list
-information does not increase correlation harm, since a single globally unique
-identifier is all that is required for correlation.
+在某些情况下，例如在<a data-cite="VC#dfn-presentation">展示</a>包含全局标识符（如驾驶证号码）的<a data-cite="VC#dfn-vc">可验证凭证</a>时，为状态列表信息添加一个或多个全局标识符不会增加关联危害，因为只需要一个全局唯一标识符即可进行关联。
       </p>
 
       <p>
-When global identifiers are used in [=presentations=] that use
-[=selective disclosure=] or [=unlinkable disclosure=], they can violate privacy
-expectations. [=Issuers=] are urged to enable status information to be
-selectively disclosable/concealable when a particular [=verifiable credential=]
-is expected to be disclosed in a way that does not need correlation, such as when
-proving that an individual is above a certain age. [=Verifiers=] can require
-that status information be revealed in situations that require them to know the
-current status of a credential, and the holder might then consent or refuse to
-reveal that information for a given transaction. In all cases, both [=issuers=]
-and [=verifiers=] are urged to avoid the use of global identifiers in order to
-prevent correlation, unless it is required for or by a particular exchange.
+当在使用<a data-cite="VC#dfn-selective-disclosure">选择性披露</a>或<a data-cite="VC#dfn-unlinkable-disclosure">不可关联披露</a>的<a data-cite="VC#dfn-presentation">展示</a>中使用全局标识符时，它们可能会违反隐私预期。建议<a data-cite="VC#dfn-issuers">发行者</a>在预期以不需要关联的方式披露特定<a data-cite="VC#dfn-vc">可验证凭证</a>时，使状态信息可以选择性披露/隐藏，例如在证明某人超过某个年龄时。<a data-cite="VC#dfn-verifier">验证者</a>可以在需要了解凭证当前状态的情况下要求披露状态信息，而持有者可以选择同意或拒绝在特定交易中披露该信息。在所有情况下，建议<a data-cite="VC#dfn-issuers">发行者</a>和<a data-cite="VC#dfn-verifier">验证者</a>避免使用全局标识符，以防止关联，除非特定交换需要或要求这样做。
       </p>
 
       <p>
-For information on other types of potential correlation,
-readers are urged to study the Privacy Considerations section of the
-[[[VC-DATA-MODEL-2.0]]] specification, particularly the subsections on
-<a data-cite="VC-DATA-MODEL-2.0#identifier-based-correlation">
-Identifier-Based Correlation</a>,
-<a data-cite="VC-DATA-MODEL-2.0#signature-based-correlation">
-Signature-Based Correlation</a>,
-<a data-cite="VC-DATA-MODEL-2.0#identifier-based-correlation">
-Long-Lived-Identifier-Based Correlation</a>, and
-<a data-cite="VC-DATA-MODEL-2.0#metadata-based-correlation">
-Metadata-Based Correlation</a>.
+有关其他类型潜在关联的信息，建议读者研究[[[VC-DATA-MODEL-2.0]]]规范中的隐私注意事项部分，特别是以下子部分：
+<a data-cite="VC-DATA-MODEL-2.0#identifier-based-correlation">基于标识符的关联</a>、
+<a data-cite="VC-DATA-MODEL-2.0#signature-based-correlation">基于签名的关联</a>、
+<a data-cite="VC-DATA-MODEL-2.0#identifier-based-correlation">基于长期标识符的关联</a>和
+<a data-cite="VC-DATA-MODEL-2.0#metadata-based-correlation">基于元数据的关联</a>。
       </p>
 
     </section>
 
     <section class="informative">
-      <h3>Verifier Caching</h3>
+      <h3>验证者缓存</h3>
 
       <p>
-It is possible for [=verifiers=] to increase the privacy of the
-[=holder=] whose [=verifiable credential=] is being checked by caching
-status lists that have been fetched from remote servers. By caching the
-content locally, less correlatable information can be inferred from
-[=verifier=]-based access patterns on the status list.
+<a data-cite="VC#dfn-verifier">验证者</a>可以通过缓存从远程服务器获取的状态列表来提高<a data-cite="VC#dfn-holders">持有者</a>的隐私性。通过本地缓存内容，可以从基于<a data-cite="VC#dfn-verifier">验证者</a>的状态列表访问模式中推断出更少的可关联信息。
       </p>
     </section>
 
     <section class="informative">
-      <h3>Content Distribution Networks</h3>
+      <h3>内容分发网络</h3>
 
       <p>
-The use of content distribution networks by [=issuers=] can increase the
-privacy of [=holders=] by reducing or eliminating requests for the
-status lists from the [=issuer=]. Often, a request for a revocation
-list will be served by an edge device and thus be faster and reduce the load
-on the server as well as cloaking [=verifiers=] and [=holders=]
-from [=issuers=].
+<a data-cite="VC#dfn-issuers">发行者</a>使用内容分发网络可以通过减少或消除对状态列表的请求来提高<a data-cite="VC#dfn-holders">持有者</a>的隐私性。通常，对撤销列表的请求将由边缘设备提供服务，从而更快并减少服务器负载，同时掩盖<a data-cite="VC#dfn-verifier">验证者</a>和<a data-cite="VC#dfn-holders">持有者</a>的身份，使其不被<a data-cite="VC#dfn-issuers">发行者</a>发现。
       </p>
     </section>
 
     <section class="informative">
-      <h3>Decoy Values</h3>
+      <h3>诱饵值</h3>
 
       <p>
-[=Issuer=] use of decoy values in status lists has been explored as a mechanism
-to increase the privacy of [=subjects=]. While algorithms for employing decoy
-values are out of scope for this specification, implementers are advised that
-the use of decoy values can harm privacy if the decoy values do not accurately
-simulate the population associated with the status list. If decoy values can
-be distinguished from real values, the anonymity provided in the set will be
-reduced by the number of decoy values that are detectable as such. The most
-privacy-preserving status list is one that never changes, since the behavior
-of the population cannot be determined if no observable events occur.
+<a data-cite="VC#dfn-issuers">发行者</a>在状态列表中使用诱饵值已被探索为一种增加主体隐私的机制。虽然使用诱饵值的算法超出了本规范的范围，但建议实现者注意，如果诱饵值未能准确模拟与状态列表相关的人群，则可能会损害隐私。如果诱饵值可以与真实值区分开来，则集合中提供的匿名性将因可检测的诱饵值数量而减少。最具隐私保护的状态列表是从未更改的状态列表，因为如果没有可观察的事件发生，就无法确定人群的行为。
       </p>
       <p>
-Given how difficult it is to statistically simulate status entries for
-a population, and that general advice cannot be given since
-[=verifiable credentials=] serve a broad set of use cases, implementers
-are advised to allocate status list entry indexes randomly, and to minimize —
-optimally to never — the rate at which status entries are changed. Allocation
-of status list entries preserves privacy best when it does not trigger any
-observable change of a status list.
+鉴于为人群统计模拟状态条目是多么困难，并且由于<a data-cite="VC#dfn-vc">可验证凭证</a>服务于广泛的用例，无法给出一般建议，建议实现者随机分配状态列表条目索引，并尽量减少——最好是永远不要——更改状态条目的频率。当状态列表分配不会触发任何可观察的更改时，状态列表条目的分配最能保护隐私。
       </p>
     </section>
 
     <section class="informative">
-      <h3>Malicious Issuers and Verifiers</h3>
+      <h3>恶意发行者和验证者</h3>
       <p>
-In general, the group privacy protections offered by this specification can be
-circumvented by malicious [=issuers=] and [=verifiers=]. Its privacy
-benefits can only be realized when issuers and verifiers intend to avoid
-tracking or sharing the presentation of particular credentials.
+通常，本规范提供的群体隐私保护可以被恶意<a data-cite="VC#dfn-issuers">发行者</a>和<a data-cite="VC#dfn-verifier">验证者</a>规避。只有当发行者和验证者有意避免跟踪或共享特定凭证的展示时，其隐私优势才能实现。
       </p>
       <p>
-A malicious [=verifier=] might intentionally attack group privacy by sharing
-information from presented credentials with a malicious [=issuer=]. This
-sort of collusion is difficult to detect as it is typically performed via a
-secure communication channel between the [=issuer=] and the [=verifier=].
+恶意<a data-cite="VC#dfn-verifier">验证者</a>可能通过与恶意<a data-cite="VC#dfn-issuers">发行者</a>共享展示的凭证信息来故意攻击群体隐私。这种勾结通常通过<a data-cite="VC#dfn-issuers">发行者</a>和<a data-cite="VC#dfn-verifier">验证者</a>之间的安全通信渠道进行，因此难以检测。
       </p>
       <p>
-A malicious [=issuer=] might intentionally attack group privacy by creating a
-unique status list for each issued credential, in order to establish a one-to-one
-mapping to track when a [=verifier=] processes each mapped credential. Similarly,
-they could establish a one-to-one mapping by using a different
-cryptographic key for each issued credential that is tracked by a given status list.
+恶意<a data-cite="VC#dfn-issuers">发行者</a>可能通过为每个颁发的凭证创建唯一的状态列表来故意攻击群体隐私，以建立一对一的映射，从而跟踪<a data-cite="VC#dfn-verifier">验证者</a>何时处理每个映射的凭证。同样，他们可以通过为每个颁发的凭证使用不同的加密密钥并将其与给定状态列表跟踪来建立一对一的映射。
       </p>
       <p>
-This sort of collusion can be detected by [=holder=] software that serves
-multiple [=holders=] (e.g., a [=holder=] app that runs on a server) if it
-has, for example, an opt-in process that finds that some global identifier(s)
-used within a [=verifiable credential=] are not adequately shared by other
-credentials.
-[=Holders=] could then be warned when presenting a [=verifiable credential=]
-that contains some global identifier(s) that are unique to that credential.
-Such an opt-in service could represent some additional privacy concerns;
-whether this potential exposure via the [=holder=] software is justified by
-the awareness of possible global identifier correlation can only be evaluated
-by the users of such a system.
+这种勾结可以通过服务于多个<a data-cite="VC#dfn-holders">持有者</a>的<a data-cite="VC#dfn-holders">持有者</a>软件（例如运行在服务器上的<a data-cite="VC#dfn-holders">持有者</a>应用程序）检测到，例如通过一个选择加入的过程，发现某些<a data-cite="VC#dfn-vc">可验证凭证</a>中使用的全局标识符未被其他凭证充分共享。
+<a data-cite="VC#dfn-holders">持有者</a>可以在展示包含某些唯一全局标识符的<a data-cite="VC#dfn-vc">可验证凭证</a>时收到警告。此类选择加入服务可能会带来一些额外的隐私问题；是否通过<a data-cite="VC#dfn-holders">持有者</a>软件的潜在暴露来换取可能的全局标识符关联的意识，只能由此类系统的用户评估。
       </p>
     </section>
 
     <section class="informative">
-      <h3>Monitoring Status Lists</h3>
+      <h3>监控状态列表</h3>
 
       <p>
-Once a [=verifier=] knows of a status list and entry index that is
-associated with a specific [=holder=] or [=subject=], it becomes possible for that
-[=verifier=] to see updates to that status entry as long as the
-status list continues to be updated. This is useful to a [=verifier=] that
-needs to understand when a particular [=verifiable credential=] has changed
-status without asking the [=issuer=] directly for status information on
-the specific [=verifiable credential=] or when interacting with the [=holder=] to get
-the latest status information is not possible. The feature can also cause a
-privacy violation for the [=holder=] and/or [=subject=] if the
-[=verifier=] is able to perform near-real-time checks on the status of the
-[=verifiable credential=].
+一旦<a data-cite="VC#dfn-verifier">验证者</a>知道与特定<a data-cite="VC#dfn-holders">持有者</a>或主体相关联的状态列表和条目索引，该<a data-cite="VC#dfn-verifier">验证者</a>就可以在状态列表继续更新的情况下看到该状态条目的更新。这对需要了解特定<a data-cite="VC#dfn-vc">可验证凭证</a>状态何时发生变化的<a data-cite="VC#dfn-verifier">验证者</a>很有用，而无需直接向<a data-cite="VC#dfn-issuers">发行者</a>询问特定<a data-cite="VC#dfn-vc">可验证凭证</a>的状态信息，或者在无法与<a data-cite="VC#dfn-holders">持有者</a>交互以获取最新状态信息时使用。然而，如果<a data-cite="VC#dfn-verifier">验证者</a>能够对<a data-cite="VC#dfn-vc">可验证凭证</a>的状态进行近乎实时的检查，这一功能也可能对<a data-cite="VC#dfn-holders">持有者</a>和/或主体造成隐私侵犯。
       </p>
 
       <p>
-[=Issuers=] can provide a level of reprieve from this privacy concern for
-[=holders=] by revoking and reissuing effectively the same
-[=verifiable credential=] on a relatively brief timeline.
-For example, an [=issuer=] could automatically reissue a
-[=verifiable credential=] every three months and assign a new status entry
-index when the reissuance occurs to break any sort of long-term monitoring
-of a [=verifiable credential=] as it changes status.
+<a data-cite="VC#dfn-issuers">发行者</a>可以通过在相对较短的时间内吊销并重新颁发相同的<a data-cite="VC#dfn-vc">可验证凭证</a>，为<a data-cite="VC#dfn-holders">持有者</a>提供一定程度的隐私保护。例如，<a data-cite="VC#dfn-issuers">发行者</a>可以每三个月自动重新颁发一次<a data-cite="VC#dfn-vc">可验证凭证</a>，并在重新颁发时分配一个新的状态条目索引，以打破对<a data-cite="VC#dfn-vc">可验证凭证</a>状态变化的长期监控。
       </p>
 
     </section>
 
     <section class="informative">
-      <h3>Correlation of Status Messages</h3>
+      <h3>状态消息的关联</h3>
       <p>
-This specification provides a means by which multiple status messages can be
-provided for a particular entry in a status list. While this mechanism can
-provide more detailed information for a particular entry in the status list,
-that information can provide further correlation data.
+本规范提供了一种机制，可以为状态列表中的特定条目提供多个状态消息。虽然此机制可以为状态列表中的特定条目提供更详细的信息，但这些信息可能提供进一步的关联数据。
       </p>
       <p>
-For example, if each status message is associated with a step in a particular
-process, or more detailed information as to why a credential was revoked or
-suspended, then an attacker that observes the changes in the list might be
-able to correlate information about the population of entities in the list
-that could lead to privacy violations. Understanding how a population
-progresses through a business process, or what percentage of the population
-is likely to be associated with a certain status, provides additional
-information to an attacker. Given such information, a phishing operation could
-predict what the next step of a business process is and then preemptively
-contact an entity whose current status is known. Then, based on that
-information, they could attempt to phish more lucrative information from
-the target using data gleaned from the status list over time.
+例如，如果每个状态消息都与特定流程中的一个步骤相关联，或者提供有关凭证为何被吊销或暂停的更详细信息，那么观察列表变化的攻击者可能能够关联列表中实体群体的信息，从而导致隐私侵犯。了解一个群体如何在业务流程中进展，或者群体中有多少百分比可能与某种状态相关联，可以为攻击者提供额外的信息。基于此类信息，网络钓鱼操作可以预测业务流程的下一步，然后抢先联系当前状态已知的实体。然后，基于这些信息，他们可以尝试通过从状态列表中随时间收集的数据，从目标中钓取更有价值的信息。
       </p>
       <p>
-For these reasons, issuers are urged to evaluate the potential ramifications of
-publishing detailed status information about a particular entity, or a
-population, in a public manner.
+因此，建议发行者评估以公开方式发布有关特定实体或群体的详细状态信息的潜在影响。
       </p>
     </section>
 
     <section class="informative">
-      <h3>Alteration of Status Messages</h3>
+      <h3>状态消息的更改</h3>
 
       <p>
-When a status list uses the status messages feature, it becomes possible for
-the [=issuer=] to increase the types of messages that are associated with
-the [=verifiable credentials=] it issues over time.
+当状态列表使用状态消息功能时，<a data-cite="VC#dfn-issuers">发行者</a>可以随着时间的推移增加与其颁发的<a data-cite="VC#dfn-vc">可验证凭证</a>相关联的消息类型。
       </p>
 
       <p>
-This feature creates a potential privacy violation where the
-[=subject=] or [=holder=] of the [=verifiable credential=] might be
-associated with additional status information that was not present when the
-original [=verifiable credential=] was issued. For example, initial status
-messages might convey "delayed" and "canceled", but additional status messages
-might be added by the [=issuer=] to convey "delayed due to non-payment" and
-"canceled due to illegal activity". This change would not be apparent to the
-[=subject=] or [=holder=] unless there was monitoring software operating
-on their behalf that would warn them that the [=issuer=] intends to expose
-additional information about their activity.
+此功能可能会造成隐私侵犯，因为主体或<a data-cite="VC#dfn-holders">持有者</a>可能会与原始<a data-cite="VC#dfn-vc">可验证凭证</a>颁发时不存在的额外状态信息相关联。例如，初始状态消息可能传达“延迟”和“取消”，但<a data-cite="VC#dfn-issuers">发行者</a>可能会增加额外的状态消息以传达“因未付款延迟”和“因非法活动取消”。除非有代表他们运行的监控软件警告他们<a data-cite="VC#dfn-issuers">发行者</a>打算公开有关其活动的额外信息，否则主体或<a data-cite="VC#dfn-holders">持有者</a>无法察觉到这些更改。
       </p>
 
       <p>
-Holder software can provide features to [=holders=] that warn them about the
-level of [=holder=] and/or [=subject=] information exposure when using
-[=verifiable credentials=] that are associated with status messages, and warn
-them when the level of information exposure changes.
+持有者软件可以为<a data-cite="VC#dfn-holders">持有者</a>提供功能，在使用与状态消息相关联的<a data-cite="VC#dfn-vc">可验证凭证</a>时警告他们<a data-cite="VC#dfn-holders">持有者</a>和/或主体信息暴露的程度，并在信息暴露程度发生变化时发出警告。
       </p>
     </section>
 
   </section>
-
   <section class="informative">
-    <h2>Security Considerations</h2>
+    <h2>安全注意事项</h2>
 
     <p>
-There are a number of security considerations that implementers should be
-aware of when processing data described by this specification. Ignoring or
-not understanding the implications of this section can result in
-security vulnerabilities.
+在处理本规范描述的数据时，实施者应注意许多安全注意事项。忽略或不了解本节的含义可能会导致安全漏洞。
     </p>
 
     <p>
-Readers are urged to familiarize themselves with the general
-security advice provided in the
+建议读者在阅读本节之前，先熟悉
 <a href="https://www.w3.org/TR/vc-data-model-2.0/#security-considerations">
-Security Considerations section of the Verifiable Credentials
-specification</a> before reading this section.
+《可验证凭证规范》的安全注意事项部分</a>中提供的一般安全建议。
     </p>
 
     <p>
-While this section attempts to highlight a broad set of security
-considerations, it is not a complete list. Implementers are urged to seek the
-advice of security and cryptography professionals when implementing mission
-critical systems using the technology outlined in this specification.
+尽管本节试图强调广泛的安全注意事项，但它并不是一个完整的列表。建议实施者在使用本规范中概述的技术实现关键任务系统时，寻求安全和加密专业人士的建议。
     </p>
 
     <section class="informative">
-      <h3>Bitstring Encoding</h3>
+      <h3 id="bitstring-encoding">位串编码</h3>
 
       <p>
-It is critical that implementers pay particular attention to the way that they
-encode and decode bitstrings. Failure to do so can result in checking the
-wrong bitstring index for a given credential, leading to a misinterpretation
-of its present state (e.g., mistaking a revoked status for an unrevoked
-status). As stated in Section <a href="#bitstringstatuslistcredential"></a>,
-bitstrings are encoded such that the first (zeroth) index refers to the
-left-most bit of the bitstring array. The diagram below demonstrates the
-proper layout for an uncompressed bitstring.
+实施者必须特别注意位串的编码和解码方式。未能正确处理可能导致检查错误的位串索引，从而误解其当前状态（例如，将吊销状态误认为未吊销状态）。如第
+<a href="#bitstringstatuslistcredential"></a>节所述，位串的编码方式是第一个（第零个）索引指向位串数组的最左侧位。下图展示了未压缩位串的正确布局。
       </p>
 
       <figure id="bitstring-layout">
         <img style="margin: auto; display: block; width: 75%;"
-             src="diagrams/bitstring-layout.svg" alt="a diagram showing two
-             wide rectangles shown side-by-side. Each rectangle is partitioned
-             into eight boxes to represent the 8 bits in a byte. The left
-             rectangle is labeled 'First byte' and the right rectangle is
-             labeled 'Last byte'. The left rectangle's left-most bit box is
-             pointed to by an arrow labeled 'index: 0'. The right rectangle's
-             right-most bit box is pointed to by an arrow labeled
-             'index: length - 1'.">
+             src="diagrams/bitstring-layout.svg" alt="一个图示，显示两个宽矩形并排显示。每个矩形分为八个框，表示字节中的8位。左侧矩形标记为“第一个字节”，右侧矩形标记为“最后一个字节”。左侧矩形的最左侧位框由一个箭头指向，标记为“索引：0”。右侧矩形的最右侧位框由一个箭头指向，标记为“索引：长度 - 1”。">
         <figcaption style="text-align: center;">
-          A visual depiction of the bitstring layout.
+          位串布局的视觉描述。
         </figcaption>
       </figure>
 
       <p>
-For example, if a bitstring is 131,072 bits in size (16KB), the first index will
-be 0, and the last index will be 131,071.
+例如，如果位串的大小为131,072位（16KB），第一个索引为0，最后一个索引为131,071。
       </p>
     </section>
 
     <section class="informative">
-      <h3>Validity Periods</h3>
+      <h3>有效期</h3>
 
       <p>
-The <a data-cite="?VC-DATA-MODEL-2.0#validity-period">validity period</a> that
-an issuer might choose to express in a status list is dependent on a variety of
-factors including:
+发行者可能选择在状态列表中表达的
+<a data-cite="?VC-DATA-MODEL-2.0#validity-period">有效期</a>取决于多种因素，包括：
       </p>
       <ul>
         <li>
-How often do status values change? In real-time? Daily? Weekly? Monthly? Other?
+状态值更改的频率如何？实时？每日？每周？每月？其他？
         </li>
         <li>
-Is there a regulatory requirement that compels an [=issuer=] to notify a
-[=verifier=] that the status of a [=verifiable credential=] has changed?
+是否存在强制<a data-cite="VC#dfn-issuers">发行者</a>通知<a data-cite="VC#dfn-verifier">验证者</a>某<a data-cite="VC#dfn-vc">可验证凭证</a>状态已更改的监管要求？
         </li>
         <li>
-Is there a period of time after which an [=issuer=] would incur reputational
-damage by not notifying a [=verifier=] of a status change?
+在多长时间后，<a data-cite="VC#dfn-issuers">发行者</a>未通知<a data-cite="VC#dfn-verifier">验证者</a>状态更改会导致声誉受损？
         </li>
         <li>
-Is there any expectation that a [=verifier=] will not accept a
-[=verifiable credential=] with a status list that does not expire for a
-period of time it deems excessive?
+<a data-cite="VC#dfn-verifier">验证者</a>是否期望不会接受状态列表有效期过长的<a data-cite="VC#dfn-vc">可验证凭证</a>？
         </li>
         <li>
-Will a short validity period for a status list cause a significant network
-bandwidth or computing burden for an [=issuer=] or a [=verifier=]? Might
-this burden be mitigated by a longer validity period?
+状态列表的短有效期是否会对<a data-cite="VC#dfn-issuers">发行者</a>或<a data-cite="VC#dfn-verifier">验证者</a>造成显著的网络带宽或计算负担？这种负担是否可以通过更长的有效期来缓解？
         </li>
       </ul>
 
       <p>
-Since these factors vary with the ecosystem and credential type, there is no
-minimum or maximum validity period that is suggested for all status lists.
-[=Issuers=] will need to consider various factors that are specific to their
-[=verifiable credential=] types and choose validity periods that will strike
-the right balance in their ecosystem.
+由于这些因素因生态系统和凭证类型而异，因此没有建议所有状态列表的最小或最大有效期。<a data-cite="VC#dfn-issuers">发行者</a>需要考虑其<a data-cite="VC#dfn-vc">可验证凭证</a>类型的各种特定因素，并选择适合其生态系统的有效期。
       </p>
     </section>
 
   </section>
+ <section class="informative">
+     <h2>可访问性注意事项</h2>
 
-  <section class="informative">
-    <h2>Accessibility Considerations</h2>
+     <p>
+ 建议读者熟悉<a href="https://www.w3.org/TR/vc-data-model-2.0/#accessibility-considerations">《可验证凭证规范》中可访问性注意事项部分</a>中提供的一般可访问性建议。本规范未提供超出所有<a data-cite="VC#dfn-vc">可验证凭证</a>的一般建议之外的其他建议。
+     </p>
 
-    <p>
-Readers are urged to familiarize themselves with the general
-accessibility advice provided in the
-<a href="https://www.w3.org/TR/vc-data-model-2.0/#accessibility-considerations">
-Accessibility Considerations section of the Verifiable Credentials
-specification</a>. No further advice is provided in this specification beyond
-the general advice for all [=verifiable credentials=].
-    </p>
+   </section>
 
-  </section>
+   <section class="informative">
+     <h2>国际化注意事项</h2>
 
-  <section class="informative">
-    <h2>Internationalization Considerations</h2>
+     <p>
+ 建议读者熟悉<a href="https://www.w3.org/TR/vc-data-model-2.0/#internationalization-considerations">《可验证凭证规范》中国际化注意事项部分</a>中提供的一般国际化建议。本规范未提供超出所有<a data-cite="VC#dfn-vc">可验证凭证</a>的一般建议之外的其他建议。
+     </p>
 
-    <p>
-Readers are urged to familiarize themselves with the general
-internationalization advice provided in the
-<a href="https://www.w3.org/TR/vc-data-model-2.0/#internationalization-considerations">
-Internationalization Considerations section of the Verifiable Credentials
-specification</a>. No further advice is provided in this specification beyond
-the general advice for all [=verifiable credentials=].
-    </p>
-
-  </section>
-
-  <section class="appendix informative">
-      <h2>Examples</h2>
+   </section>
+ <section class="appendix informative">
+      <h2>示例</h2>
 
       <section>
-        <h2>Revocable Verifiable Credential</h2>
-<pre class="example nohighlight vc" title="A Revocable Verifiable Credential"
+        <h2>可撤销的可验证凭证</h2>
+<pre class="example nohighlight vc" title="一个可撤销的可验证凭证"
 data-vc-vm="https://example.edu/issuers/565049/keys/1"
 data-vc-tabs="ecdsa-rdfc-2019 eddsa-rdfc-2022 jose cose">
 {
@@ -1848,8 +1241,8 @@ data-vc-tabs="ecdsa-rdfc-2019 eddsa-rdfc-2022 jose cose">
       </section>
 
       <section>
-        <h2>Status List Verifiable Credential</h2>
-<pre class="example nohighlight vc" title="A Status List Verifiable Credential"
+        <h2>状态列表可验证凭证</h2>
+<pre class="example nohighlight vc" title="一个状态列表可验证凭证"
 data-vc-vm="https://example.edu/issuers/565049/keys/1"
 data-vc-tabs="ecdsa-rdfc-2019 eddsa-rdfc-2022 jose cose">
 {
@@ -1872,15 +1265,14 @@ data-vc-tabs="ecdsa-rdfc-2019 eddsa-rdfc-2022 jose cose">
       </section>
 
       <section>
-        <h2>Multiple Status Lists in One Verifiable Credential</h2>
+        <h2>单个可验证凭证中的多个状态列表</h2>
 
         <p>
-This specification enables an [=issuer=] to associate multiple status lists
-with a single [=verifiable credential=].
+本规范允许<a data-cite="VC#dfn-issuers">发行者</a>将多个状态列表与单个<a data-cite="VC#dfn-vc">可验证凭证</a>关联。
         </p>
 
         <pre class="example nohighlight"
-             title="Associating multiple status lists with a single Verifiable Credential"
+             title="将多个状态列表与单个可验证凭证关联"
              data-vc-vm='https://example.edu/issuers/565049/keys/1'
              data-vc-tabs="ecdsa-rdfc-2019 eddsa-rdfc-2022 jose cose">
 {
@@ -1892,8 +1284,7 @@ with a single [=verifiable credential=].
   "type": ["VerifiableCredential"],
   "issuer": "did:example:12345",
   "issuanceDate": "2021-04-05T14:27:42Z",
-  <span class="comment">// note the use of an array to represent the set of
-  // status entries</span>
+  <span class="comment">// 注意使用数组表示状态条目集</span>
   "credentialStatus": <span class="highlight">[{
     "id": "https://example.com/credentials/status/3#94567",
     "type": "BitstringStatusListEntry",
@@ -1916,16 +1307,14 @@ with a single [=verifiable credential=].
       </section>
 
       <section>
-        <h2>Multiple Status Entries in a Single List</h2>
+        <h2>单个状态列表中的多个状态条目</h2>
 
         <p>
-It is possible for a single status list to contain multiple types of status
-purposes. Doing so can make the retrieval of a list slightly more efficient
-than fetching multiple status lists.
+单个状态列表可以包含多种状态用途。这样可以比获取多个状态列表稍微提高列表检索效率。
         </p>
 
         <pre class="example nohighlight"
-             title="Associating multiple status entries in a single status list"
+             title="在单个状态列表中关联多个状态条目"
              data-vc-vm='https://example.edu/issuers/565049/keys/1'
              data-vc-tabs="ecdsa-rdfc-2019 eddsa-rdfc-2022 jose cose">
 {
@@ -1937,8 +1326,7 @@ than fetching multiple status lists.
   "type": ["VerifiableCredential"],
   "issuer": "did:example:12345",
   "issuanceDate": "2021-04-05T14:27:42Z",
-  <span class="comment">// note the use of a single list to store multiple
-  // status entries</span>
+  <span class="comment">// 注意使用单个列表存储多个状态条目</span>
   "credentialStatus": [{
     "id": "<span class="highlight">https://example.com/credentials/status/5#94567</span>",
     "type": "BitstringStatusListEntry",
@@ -1960,42 +1348,38 @@ than fetching multiple status lists.
         </pre>
     </section>
   </section>
+ <section>
+      <h2>修订历史</h2>
 
-  <section>
-    <h2>Revision History</h2>
+      <p>
+  本节包含了随着时间推移对本规范所做的实质性更改。
+      </p>
 
-    <p>
-This section contains the substantive changes that have been made to this
-specification over time.
-    </p>
-
-    <p>
-Changes since the
-<a href="https://www.w3.org/TR/2024/CR-vc-bitstring-status-list-20240521/">
-v1.0 First Candidate Recommendation</a>:
-    </p>
-    <ul>
-      <li>
-Many editorial updates to clarify grammar, flow, and understanding of the
-specification contents.
-      </li>
-      <li>
-Provided final guidance on using decoy values and validity periods for status
-lists.
-      </li>
-      <li>
-Add a context and vocabulary section.
-      </li>
-      <li>
-Clarify that the `ttl` property doesn't override validity
-      </li>
-      <li>
-Add a `refresh` status purpose.
-      </li>
-      <li>
-Remove integer error codes from problem details
-      </li>
-    </ul>
+      <p>
+  自
+  <a href="https://www.w3.org/TR/2024/CR-vc-bitstring-status-list-20240521/">
+  v1.0 第一个候选推荐版本</a>以来的更改：
+      </p>
+      <ul>
+        <li>
+  进行了许多编辑更新，以澄清语法、流程和对规范内容的理解。
+        </li>
+        <li>
+  提供了关于使用诱饵值和状态列表有效期的最终指导。
+        </li>
+        <li>
+  添加了上下文和词汇表部分。
+        </li>
+        <li>
+  澄清了`ttl`属性不会覆盖有效期。
+        </li>
+        <li>
+  添加了一个`refresh`状态用途。
+        </li>
+        <li>
+  从问题详情中移除了整数错误代码。
+        </li>
+      </ul>
   </section>
 
   </body>
